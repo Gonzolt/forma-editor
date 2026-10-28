@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ConnectionInfo, Preferences, SettingsTab } from "../types";
 import { desktop } from "../lib/bridge";
 import { skills } from "../lib/skills";
+import { UpdatesPanel, type UpdatesPanelProps } from "./UpdatesPanel";
 interface Props {
   initialTab: SettingsTab;
   preferences: Preferences;
@@ -17,6 +18,7 @@ interface Props {
   onClose: () => void;
   onNotice: (message: string) => void;
   onMotionKit: () => void;
+  updates: UpdatesPanelProps;
 }
 export function SettingsModal({
   initialTab,
@@ -25,6 +27,7 @@ export function SettingsModal({
   onClose,
   onNotice,
   onMotionKit,
+  updates,
 }: Props) {
   const [tab, setTab] = useState(initialTab);
   const [key, setKey] = useState("");
@@ -125,6 +128,7 @@ export function SettingsModal({
                 "Export",
                 "Storage",
                 "Shortcuts",
+                "Updates",
               ] as SettingsTab[]
             ).map((t) => (
               <button
@@ -166,7 +170,9 @@ export function SettingsModal({
                   ? "Ready for the world."
                   : tab === "Storage"
                     ? "Everything in its place."
-                    : "A quicker way."}
+                    : tab === "Updates"
+                      ? "A little newer."
+                      : "A quicker way."}
           </h3>
           {tab === "Claude" && (
             <>
@@ -391,6 +397,7 @@ export function SettingsModal({
               </div>
             </>
           )}
+          {tab === "Updates" && <UpdatesPanel {...updates} />}
           {tab === "Shortcuts" && (
             <div className="shortcut-list">
               {[

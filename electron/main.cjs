@@ -16,6 +16,11 @@ const { pathToFileURL } = require("node:url");
 const { JsonStore, validateState } = require("./store.cjs");
 const { extensions, registerFiles } = require("./media.cjs");
 const { MotionKit } = require("./motionkit.cjs");
+const {
+  UpdateService,
+  gitRevision,
+  KIT_BASE_REVISION,
+} = require("./updates.cjs");
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -46,6 +51,12 @@ let win,
   outputDirectory,
   allowClose = false;
 let motionKit;
+let updates;
+const checkOnLaunch =
+  !process.env.FORMA_TEST_DATA || !!process.env.FORMA_UPDATE_FIXTURE;
+function checkUpdatesAtLaunch() {
+  if (checkOnLaunch) void updates?.check().catch(() => {});
+}
 const productionUrl = pathToFileURL(
   path.join(__dirname, "../dist/index.html"),
 ).href;
@@ -100,7 +111,10 @@ function createWindow() {
   win.on("closed", () => {
     win = null;
   });
-  win.once("ready-to-show", () => win.show());
+  win.once("ready-to-show", () => {
+    win.show();
+    checkUpdatesAtLaunch();
+  });
   win.loadURL(allowedUrl);
 }
 const gotLock = app.requestSingleInstanceLock();
@@ -109,7 +123,8 @@ app.on("second-instance", () => {
   if (win) {
     if (win.isMinimized()) win.restore();
     win.focus();
-  } else if (app.isReady()) createWindow();
+    checkUpdatesAtLaunch();
+  } else if (app.isReady() && updates) createWindow();
 });
 if (gotLock)
   app
@@ -155,6 +170,57 @@ if (gotLock)
             win.webContents.send("motionkit:job", job);
         },
       });
+      const fixture =
+        process.env.FORMA_TEST_DATA && process.env.FORMA_UPDATE_FIXTURE
+          ? JSON.parse(
+              await fs.readFile(process.env.FORMA_UPDATE_FIXTURE, "utf8"),
+            )
+          : null;
+      updates = new UpdateService({
+        version: app.getVersion(),
+        store,
+        fetch: fixture
+          ? async (url) =>
+              new Response(
+                JSON.stringify(
+                  url.includes("/releases/latest")
+                    ? fixture.release
+                    : fixture.commits,
+                ),
+                { status: 200, headers: { etag: '"fixture"' } },
+              )
+          : (url, options) => net.fetch(url, options),
+        kitContext: async () => {
+          await motionKit.ensure();
+          if (!(await fs.stat(motionKit.root)).isDirectory())
+            throw new Error("MotionKit project missing.");
+          const revision = await gitRevision(motionKit.root);
+          const managed = await fs
+            .realpath(path.join(app.getPath("userData"), "motionkit"))
+            .catch(() => null);
+          const isManaged = motionKit.root === managed;
+          return {
+            root: motionKit.root,
+            revision: revision || (isManaged ? KIT_BASE_REVISION : null),
+            mode: revision ? "git" : isManaged ? "bundled" : "external",
+          };
+        },
+        onChange: (state) => {
+          if (win && !win.isDestroyed())
+            win.webContents.send("updates:status", state);
+        },
+      });
+      handle("updates:status", () => updates.snapshot());
+      handle("updates:check", () => updates.check());
+      handle("updates:open", (target) => {
+        if (target === "forma")
+          return shell.openExternal(updates.snapshot().app.releaseUrl);
+        if (target === "motionkit")
+          return shell.openExternal(
+            "https://github.com/Gonzolt/motionkit/commits",
+          );
+        throw new Error("Unknown update destination.");
+      });
       protocol.handle("forma-kit", (request) => motionKit.serve(request));
       handle("motionkit:status", () => motionKit.status());
       handle("motionkit:preview", (id) => motionKit.preview(id));
@@ -168,7 +234,10 @@ if (gotLock)
           title: "Choose a MotionKit project",
           properties: ["openDirectory"],
         });
-        return result.canceled ? null : motionKit.choose(result.filePaths[0]);
+        if (result.canceled) return null;
+        const selected = await motionKit.choose(result.filePaths[0]);
+        await updates.refreshContext();
+        return selected;
       });
       handle("motionkit:reveal", async (id) => {
         const record = (await motionKit.exports()).find(
@@ -214,6 +283,7 @@ if (gotLock)
         else if (action === "close") win.close();
       });
       handle("close:ready", async () => {
+        await updates.close();
         await motionKit.close();
         await store.queue;
         allowClose = true;

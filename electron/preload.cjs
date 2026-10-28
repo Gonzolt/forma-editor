@@ -1,6 +1,16 @@
 const { contextBridge, ipcRenderer, webUtils } = require("electron");
 const invoke = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
 contextBridge.exposeInMainWorld("forma", {
+  updates: {
+    status: () => invoke("updates:status"),
+    check: () => invoke("updates:check"),
+    open: (target) => invoke("updates:open", target),
+    onStatus: (callback) => {
+      const handler = (_event, state) => callback(state);
+      ipcRenderer.on("updates:status", handler);
+      return () => ipcRenderer.removeListener("updates:status", handler);
+    },
+  },
   motionKit: {
     status: () => invoke("motionkit:status"),
     preview: (id) => invoke("motionkit:preview", id),

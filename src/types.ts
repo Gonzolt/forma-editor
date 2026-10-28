@@ -1,7 +1,7 @@
 export type Aspect = "9:16" | "16:9" | "1:1" | "4:5";
 export type Page = "editor" | "saved" | "templates" | "motionkit";
 export type SettingsTab =
-  "Claude" | "Skills" | "Export" | "Storage" | "Shortcuts";
+  "Claude" | "Skills" | "Export" | "Storage" | "Shortcuts" | "Updates";
 export interface MediaFile {
   id: string;
   name: string;
@@ -49,6 +49,12 @@ export interface ConnectionInfo {
   encryptionAvailable: boolean;
 }
 export interface DesktopBridge {
+  updates: {
+    status: () => Promise<UpdateStatus>;
+    check: () => Promise<UpdateStatus>;
+    open: (target: "forma" | "motionkit") => Promise<void>;
+    onStatus: (callback: (status: UpdateStatus) => void) => () => void;
+  };
   motionKit: {
     status: () => Promise<MotionKitStatus>;
     preview: (id: string) => Promise<KitPreview>;
@@ -74,6 +80,30 @@ export interface DesktopBridge {
   openOutput: () => Promise<void>;
   onCloseRequest: (callback: () => void) => () => void;
   closeReady: () => Promise<void>;
+}
+export type UpdateState =
+  "idle" | "current" | "available" | "unpublished" | "unknown" | "error";
+export interface UpdateStatus {
+  checking: boolean;
+  checkedAt: number | null;
+  app: {
+    state: UpdateState;
+    available: boolean;
+    currentVersion: string;
+    latestVersion: string | null;
+    releaseUrl: string;
+    error?: string;
+  };
+  motionkit: {
+    state: UpdateState;
+    available: boolean;
+    currentRevision: string | null;
+    latestRevision: string | null;
+    mode: "bundled" | "git" | "external" | "unknown";
+    root: string;
+    sourceUrl: string;
+    error?: string;
+  };
 }
 export interface KitFilm {
   id: string;

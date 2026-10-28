@@ -11,6 +11,7 @@ import { Sidebar } from "./components/Sidebar";
 import { SidebarPanel } from "./components/SidebarPanel";
 import { MotionKitStudio, SavedVideos } from "./components/MotionKitStudio";
 import { useMotionKit } from "./lib/useMotionKit";
+import { useUpdates } from "./lib/useUpdates";
 import { Workspace } from "./components/Workspace";
 import { SettingsModal } from "./components/SettingsModal";
 import {
@@ -101,6 +102,7 @@ export default function App() {
     toastTimer.current = setTimeout(() => setNotice(""), 7500);
   }, []);
   const closeSettings = useCallback(() => setSettings(null), []);
+  const updates = useUpdates(ready, notify);
   useEffect(() => {
     if (kit.job?.status === "completed")
       notify("MotionKit export ready. Your video is in Saved videos.");
@@ -437,6 +439,8 @@ export default function App() {
       <TitleBar
         onSettings={() => setSettings("Claude")}
         onError={notify}
+        onUpdates={() => setSettings("Updates")}
+        updatesAvailable={updates.available}
         theme={state.preferences.theme}
         onToggleTheme={() =>
           changePreferences({
@@ -616,6 +620,11 @@ export default function App() {
           onMotionKit={() => {
             closeSettings();
             setPage("motionkit");
+          }}
+          updates={{
+            status: updates.status,
+            onCheck: updates.check,
+            onOpen: updates.open,
           }}
         />
       )}

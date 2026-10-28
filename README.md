@@ -36,6 +36,7 @@ A Windows and macOS desktop foundation for an approachable, prompt-driven video 
 - A real MotionKit studio with the three bundled example films, a live player, all 25 upstream editing guides, a project-folder picker and refresh after source edits.
 - Native H.264 MP4 exports at 360p/720p/1080p/4K and 24/30/60 fps, with a selectable time range, optional AAC soundtrack, actual frame progress and cancellation.
 - Finished exports in Saved videos, with playback, file reveal and recovery after restart.
+- Automatic launch checks for stable Forma releases and the latest MotionKit commit on their public GitHub repositories, with an update indicator and Settings → Updates.
 - Responsive layout, visible keyboard focus, modal focus management and reduced-motion support.
 
 ## What is intentionally pending
@@ -56,6 +57,25 @@ Claude account sign-in and execution, voice dictation and a timeline editor are 
 Forma uses Electron's bundled Chromium and a bundled FFmpeg executable for this path. It needs no system Node, Chrome, Python, FFmpeg or WSL when installed. Advanced upstream Python, voice, transcription and third-party workflows still have their own dependencies and are not part of the native film export path. External network assets are blocked in the sandboxed film renderer; keep a film's assets inside its project.
 
 The native adapter also fixes the stage's grid sizing in served HTML, so the authored canvas stays centered in small previews and lower-resolution exports. It does not change the user's source files.
+
+## Startup update checks
+
+Both [Forma](https://github.com/Gonzolt/forma-editor) and [MotionKit](https://github.com/Gonzolt/motionkit) are public GitHub repositories.
+
+Every application launch, including reopening the window on macOS, starts a background check:
+
+- **Forma:** query GitHub's latest published, stable release and compare its semantic version with the installed app. Drafts and prereleases are excluded. **View Forma release** opens the official version's release page to download the appropriate installer.
+- **MotionKit:** query the latest commit on the repository's default branch. Managed copies compare against their bundled base revision. Existing Git checkouts read their loose/packed/worktree HEAD without requiring a Git executable. A project with no readable revision is labeled untracked rather than up to date. **View MotionKit changes** opens the upstream commit history.
+
+Results appear in **Settings → Updates**, with a title-bar indicator and one notification when a different version is found. **Check for updates** retries both checks. Cached ETags reduce repeated transfers; a 12-second network deadline, offline handling and rate-limit messages keep the editor available. Requests use public GitHub metadata; footage and credentials stay local.
+
+Checks are read-only. Install the downloaded Forma release when ready. For MotionKit, review upstream changes and choose an updated project folder in the studio; working films are not overwritten automatically. The app checks sources and reports available versions, rather than silently installing code at startup.
+
+## Publishing the next app version
+
+Update `package.json` and its lockfile, commit the tested changes, then push a matching stable tag such as `v0.4.1`. `.github/workflows/release.yml` validates that the tag matches the package version, creates a draft release, tests/builds Windows x64 and both Mac architectures, uploads installers directly to that release, and publishes it after all builds succeed. Only published stable releases become the launch check's latest version. Regular branch builds continue to avoid publishing.
+
+Installers remain unsigned/not notarized until platform signing is configured. Release installation is manual; no application binary is downloaded or executed by the update checker.
 
 ## Run locally
 
@@ -105,6 +125,7 @@ npm test
 npm run build
 npm run test:desktop
 npm run test:motionkit
+npm run test:updates
 ```
 
 Unit tests cover persistence, import registration, IPC state validation, the pinned MotionKit films/guides and project asset boundaries. Desktop smoke tests use isolated temporary profiles. They check the original editor and appearance controls, and additionally render actual MotionKit frames, reject empty black frames, decode the resulting H.264 MP4, test AAC soundtrack muxing, cancel an active render, play a finished export and restore the library after restart. Screenshots and a short rendered test film are saved in `test-results/`. No real credentials or AI calls are used.
@@ -122,9 +143,11 @@ Unit tests cover persistence, import registration, IPC state validation, the pin
 - `electron/store.cjs`: bounded state validation and serialized atomic writes.
 - `electron/motionkit.cjs`: sandboxed offscreen Chromium frame rendering, FFmpeg jobs, cancellation and verified export history.
 - `electron/kit-project.cjs`: project discovery, skill loading and constrained local asset serving.
+- `electron/updates.cjs`: public GitHub release/commit checks, ETag cache, version comparison and Git revision reading.
 - `vendor/motionkit/` and `vendor/UPSTREAM.md`: pinned original upstream source and provenance.
 - `tools/prepare-ffmpeg.cjs` and `tools/before-pack.cjs`: install and package the encoder for the correct OS/CPU target, including Intel builds made on Apple Silicon.
 - `.github/workflows/desktop.yml`: per-platform test and package jobs.
+- `.github/workflows/release.yml` and `tools/release-assets.cjs`: stable tag validation and public release installers.
 
 Local data uses Electron's per-user app data directory (`%APPDATA%/forma-editor` on Windows; `~/Library/Application Support/forma-editor` on macOS). Projects, registered source paths, output preferences, verified export history and encrypted credentials are separate files. The initial working MotionKit snapshot lives in the `motionkit/` subfolder; selecting an existing project stores its location instead. Source media stays where you imported it. Missing media is marked for reimport. Exports default to the operating system's video folder under Forma. No GPU capability is inferred or advertised.
 

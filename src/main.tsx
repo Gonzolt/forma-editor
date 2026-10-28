@@ -10,6 +10,7 @@ import App from "./App";
 import "./styles.css";
 import "./appearance.css";
 import "./motionkit.css";
+import "./updates.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

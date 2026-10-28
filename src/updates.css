@@ -1,0 +1,114 @@
+.window-controls .title-updates {
+  position: relative;
+  width: 38px;
+}
+.title-updates.has-updates {
+  color: var(--accent);
+}
+.updates-dot {
+  position: absolute;
+  right: 8px;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 1px solid var(--paper);
+}
+.updates-panel .settings-description {
+  margin-bottom: 18px;
+}
+.update-card {
+  background: var(--paper);
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  padding: 17px;
+  margin-bottom: 15px;
+}
+.update-card-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.update-card-heading h4 {
+  font: 28px var(--font-display);
+  margin: 0;
+}
+.update-badge {
+  font: 8px var(--font-mono);
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+.update-available {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.update-current {
+  color: var(--success);
+}
+.update-error {
+  color: var(--accent);
+}
+.update-versions {
+  font: 10px/1.8 var(--font-mono);
+  color: var(--secondary);
+  margin: 12px 0 7px;
+  overflow-wrap: anywhere;
+}
+.update-message {
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--secondary);
+  margin: 7px 0 15px;
+}
+.update-card .button {
+  background: var(--card);
+  font-size: 11px;
+  min-height: 33px;
+}
+.update-card .field-help {
+  font-size: 11px;
+  line-height: 1.75;
+  margin: 13px 0 0;
+}
+.update-check-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+.update-check-row .button {
+  font-size: 11px;
+}
+.update-check-row .field-help {
+  font-size: 10px;
+  margin: 0;
+}
+.update-spinning {
+  animation: update-spin 1.2s linear infinite;
+}
+@keyframes update-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 760px) {
+  .update-card {
+    padding: 14px;
+  }
+  .update-badge {
+    font-size: 7px;
+  }
+  .update-versions {
+    font-size: 9px;
+  }
+  .update-card-heading h4 {
+    font-size: 26px;
+  }
+}

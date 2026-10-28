@@ -1,4 +1,12 @@
-import { Minus, Moon, Settings2, Square, Sun, X } from "lucide-react";
+import {
+  ArrowDownToLine,
+  Minus,
+  Moon,
+  Settings2,
+  Square,
+  Sun,
+  X,
+} from "lucide-react";
 import { desktop } from "../lib/bridge";
 export function Brand({ large = false }: { large?: boolean }) {
   return (
@@ -17,11 +25,15 @@ export function TitleBar({
   onError,
   theme,
   onToggleTheme,
+  onUpdates,
+  updatesAvailable,
 }: {
   onSettings: () => void;
   onError: (message: string) => void;
   theme: "light" | "dark";
   onToggleTheme: () => void;
+  onUpdates: () => void;
+  updatesAvailable: boolean;
 }) {
   const control = async (action: "minimize" | "maximize" | "close") => {
     try {
@@ -40,6 +52,15 @@ export function TitleBar({
         </span>
       </div>
       <div className="window-controls">
+        <button
+          className={`icon-button title-updates ${updatesAvailable ? "has-updates" : ""}`}
+          aria-label={updatesAvailable ? "Updates available" : "Open updates"}
+          title={updatesAvailable ? "Updates available" : "Updates"}
+          onClick={onUpdates}
+        >
+          <ArrowDownToLine size={16} />
+          {updatesAvailable && <i className="updates-dot" />}
+        </button>
         <button
           className="icon-button theme-toggle"
           aria-label={
