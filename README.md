@@ -2,7 +2,7 @@
 
 A little direction. A beautiful edit.
 
-A Windows and macOS desktop foundation for an approachable, prompt-driven video editor. Built with Electron, React and TypeScript, with warm paper colors, local typography and the supplied hands illustration. Motion Kit is deliberately deferred.
+A Windows and macOS desktop foundation for an approachable, prompt-driven video editor. Built with Electron, React and TypeScript, with warm paper colors, local typography and the supplied hands illustration. MotionKit is now integrated for live film previews, editing guides and native MP4 exports.
 
 ![Forma main window](docs/preview.png)
 
@@ -10,6 +10,13 @@ A Windows and macOS desktop foundation for an approachable, prompt-driven video 
 <summary>Dark mode preview</summary>
 
 ![Forma in dark mode](docs/dark-mode.png)
+
+</details>
+
+<details>
+<summary>MotionKit studio preview</summary>
+
+![MotionKit studio in Forma](docs/motionkit.png)
 
 </details>
 
@@ -26,13 +33,29 @@ A Windows and macOS desktop foundation for an approachable, prompt-driven video 
 - Settings for Claude credentials, skills, export defaults, storage and shortcuts.
 - API-key storage encrypted with Electron `safeStorage`; keys never enter saved projects or the renderer after saving.
 - Explicit, cancelable **demo mode**, producing an example edit plan.
+- A real MotionKit studio with the three bundled example films, a live player, all 25 upstream editing guides, a project-folder picker and refresh after source edits.
+- Native H.264 MP4 exports at 360p/720p/1080p/4K and 24/30/60 fps, with a selectable time range, optional AAC soundtrack, actual frame progress and cancellation.
+- Finished exports in Saved videos, with playback, file reveal and recovery after restart.
 - Responsive layout, visible keyboard focus, modal focus management and reduced-motion support.
 
 ## What is intentionally pending
 
-This is an application foundation, **not a functioning AI editing/rendering engine yet**. Demo progress is simulated. It does not inspect frames, transcribe audio, cut footage, add captions, generate music, send AI requests, render or export videos. The Saved videos page is an honest empty state. File previews depend on Electron's supported codecs; importing a MOV or MKV does not guarantee its codec can be previewed.
+MotionKit previews and exports are real. The main editor's **Run edit** remains a separate, explicitly simulated prompt workflow. It does not automatically rewrite MotionKit films, inspect your footage, transcribe audio, cut silences, add captions or generate music. File previews depend on Electron's supported codecs; importing a MOV or MKV does not guarantee its codec can be previewed.
 
-Claude account sign-in and execution, Motion Kit, voice dictation, a timeline editor and real export jobs are future integrations. A saved API key is not a verified connection. No external AI services are called and no footage is uploaded.
+Claude account sign-in and execution, voice dictation and a timeline editor are pending. A saved API key is not a verified connection. MotionKit's guides are readable in the app, and their supporting scripts are included in the working project; they are not automatically installed or executed. No external AI services are called and no footage is uploaded.
+
+## MotionKit workflow
+
+1. Choose **MotionKit** in the sidebar. On first use, Forma seeds a writable MotionKit project in its app data folder from the pinned source snapshot. Existing projects are preserved during upgrades.
+2. Choose a film. The embedded upstream player supports playback, scrubbing, looping and safe-zone guides.
+3. Choose **Editing skills** to read and search the actual upstream guides, including `motionkit`, `i-hate-editing`, captions, effects, editing, audio and finishing.
+4. Use **Open folder** to edit the real project files, or **Choose project** to select an existing MotionKit checkout. Refresh reloads the film list and preview. Films retain MotionKit's deterministic `render(t)` and `window.PK` contract.
+5. Choose a resolution, frame rate and time range, then **Export MP4**. Its authored aspect ratio is preserved. If you attach a soundtrack, it is aligned with the film timeline, padded or trimmed to the exported range, and muxed as AAC. Without an attached soundtrack, the export is silent; in-film browser audio is not captured.
+6. Watch real frame progress or choose **Stop export**. An unfinished encode is removed rather than added to your library. A successful encode is checked with FFmpeg before its final filename and Saved videos record are created.
+
+Forma uses Electron's bundled Chromium and a bundled FFmpeg executable for this path. It needs no system Node, Chrome, Python, FFmpeg or WSL when installed. Advanced upstream Python, voice, transcription and third-party workflows still have their own dependencies and are not part of the native film export path. External network assets are blocked in the sandboxed film renderer; keep a film's assets inside its project.
+
+The native adapter also fixes the stage's grid sizing in served HTML, so the authored canvas stays centered in small previews and lower-resolution exports. It does not change the user's source files.
 
 ## Run locally
 
@@ -81,9 +104,10 @@ Packages appear in `release/`. The GitHub Actions workflow tests and builds Wind
 npm test
 npm run build
 npm run test:desktop
+npm run test:motionkit
 ```
 
-Unit tests cover ordered atomic persistence, corrupt-data handling, import registration and IPC state validation. The Electron smoke test uses an isolated temporary profile and exercises import and actual protocol preview, encrypted key storage/removal, connection gating, skills, formats, demo cancellation/completion, templates, shortcuts, narrow layout and restart recovery. Screenshots are saved in `test-results/`. No real credentials or AI calls are used.
+Unit tests cover persistence, import registration, IPC state validation, the pinned MotionKit films/guides and project asset boundaries. Desktop smoke tests use isolated temporary profiles. They check the original editor and appearance controls, and additionally render actual MotionKit frames, reject empty black frames, decode the resulting H.264 MP4, test AAC soundtrack muxing, cancel an active render, play a finished export and restore the library after restart. Screenshots and a short rendered test film are saved in `test-results/`. No real credentials or AI calls are used.
 
 ## Where things live
 
@@ -96,14 +120,18 @@ Unit tests cover ordered atomic persistence, corrupt-data handling, import regis
 - `electron/preload.cjs`: narrow, context-isolated bridge. No arbitrary filesystem, shell or IPC access is exposed.
 - `electron/media.cjs`: supported imports and stable file registration.
 - `electron/store.cjs`: bounded state validation and serialized atomic writes.
+- `electron/motionkit.cjs`: sandboxed offscreen Chromium frame rendering, FFmpeg jobs, cancellation and verified export history.
+- `electron/kit-project.cjs`: project discovery, skill loading and constrained local asset serving.
+- `vendor/motionkit/` and `vendor/UPSTREAM.md`: pinned original upstream source and provenance.
+- `tools/prepare-ffmpeg.cjs` and `tools/before-pack.cjs`: install and package the encoder for the correct OS/CPU target, including Intel builds made on Apple Silicon.
 - `.github/workflows/desktop.yml`: per-platform test and package jobs.
 
-Local data uses Electron's per-user app data directory (`%APPDATA%/forma-editor` on Windows; `~/Library/Application Support/forma-editor` on macOS). Projects, registered source paths, output preferences and encrypted credentials are separate files. Source media stays where you imported it. Missing media is marked for reimport. The future export folder defaults to Videos/Forma. No GPU capability is inferred or advertised.
+Local data uses Electron's per-user app data directory (`%APPDATA%/forma-editor` on Windows; `~/Library/Application Support/forma-editor` on macOS). Projects, registered source paths, output preferences, verified export history and encrypted credentials are separate files. The initial working MotionKit snapshot lives in the `motionkit/` subfolder; selecting an existing project stores its location instead. Source media stays where you imported it. Missing media is marked for reimport. Exports default to the operating system's video folder under Forma. No GPU capability is inferred or advertised.
 
 ## Next integration boundary
 
-Replace `makeDemoPlan` and the simulated progress driver with a desktop job service exposing start, progress, cancel and verified output events. Keep provider secrets in the main process. Connect Claude authentication through its supported provider flow, and validate a connection before displaying it as connected. Add Motion Kit behind the same adapter later, without coupling it to the composer. Populate Saved videos only after checking that an actual output file exists.
+Connect an editing agent to the existing MotionKit working project and guides, keeping provider secrets in the main process. Replace `makeDemoPlan` with real planning/source-edit execution, then route its finished films through the existing MotionKit preview/export service. Validate a provider connection before displaying it as connected. The export service already exposes start, progress, cancel and verified output events; Saved videos contains actual checked outputs.
 
 ## Design assets
 
-The hands image was supplied for this project. Fonts are bundled through Fontsource; their licenses ship with the respective packages. The minimal ring-and-dot app icon is reproducible with `tools/create-icon.ps1` on Windows. The application has no analytics or remote font requests.
+The hands image was supplied for this project. Fonts are bundled through Fontsource; their licenses ship with the respective packages. The minimal ring-and-dot app icon is reproducible with `tools/create-icon.ps1` on Windows. MotionKit's source and asset provenance is in `vendor/UPSTREAM.md`. The `ffmpeg-static` package includes its binary's license and build information, which ship alongside the unpacked encoder. The application has no analytics or remote font requests.

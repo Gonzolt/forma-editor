@@ -1,5 +1,6 @@
 import {
   ArrowUpRight,
+  Clapperboard,
   Film,
   Grid2X2,
   Plus,
@@ -19,6 +20,8 @@ interface Props {
   onSelect: (id: string) => void;
   onSettings: () => void;
   busy: boolean;
+  filmCount: number;
+  videoCount: number;
 }
 export function Sidebar({
   sessions,
@@ -30,6 +33,8 @@ export function Sidebar({
   onSelect,
   onSettings,
   busy,
+  filmCount,
+  videoCount,
 }: Props) {
   const [searching, setSearching] = useState(false);
   const [search, setSearch] = useState("");
@@ -50,12 +55,20 @@ export function Sidebar({
         </button>
         <nav aria-label="Main navigation">
           <button
+            className={`nav-item ${page === "motionkit" ? "active" : ""}`}
+            onClick={() => onPage("motionkit")}
+          >
+            <Clapperboard size={17} />
+            <span>MotionKit</span>
+            <span className="mono">{filmCount}</span>
+          </button>
+          <button
             className={`nav-item ${page === "saved" ? "active" : ""}`}
             onClick={() => onPage("saved")}
           >
             <Film size={17} />
             <span>Saved videos</span>
-            <span className="mono">0</span>
+            <span className="mono">{videoCount}</span>
           </button>
           <button
             className={`nav-item ${page === "templates" ? "active" : ""}`}
@@ -148,7 +161,7 @@ export function Sidebar({
           <kbd>⌘ / CTRL ,</kbd>
         </button>
         <div className="sidebar-edition eyebrow">
-          FORMA STUDIO <span>EARLY EDITION · 0.2</span>
+          FORMA STUDIO <span>EARLY EDITION · 0.3</span>
         </div>
       </div>
     </aside>

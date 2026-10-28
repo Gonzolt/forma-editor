@@ -1,6 +1,21 @@
 const { contextBridge, ipcRenderer, webUtils } = require("electron");
 const invoke = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
 contextBridge.exposeInMainWorld("forma", {
+  motionKit: {
+    status: () => invoke("motionkit:status"),
+    preview: (id) => invoke("motionkit:preview", id),
+    export: (options) => invoke("motionkit:export", options),
+    cancel: () => invoke("motionkit:cancel"),
+    exports: () => invoke("motionkit:exports"),
+    chooseProject: () => invoke("motionkit:choose"),
+    openProject: () => invoke("motionkit:open-project"),
+    revealExport: (id) => invoke("motionkit:reveal", id),
+    onJob: (callback) => {
+      const handler = (_event, job) => callback(job);
+      ipcRenderer.on("motionkit:job", handler);
+      return () => ipcRenderer.removeListener("motionkit:job", handler);
+    },
+  },
   setTheme: (theme) => invoke("theme:set", theme),
   platform: process.platform,
   window: (action) => invoke("window", action),

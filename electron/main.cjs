@@ -15,8 +15,18 @@ const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { JsonStore, validateState } = require("./store.cjs");
 const { extensions, registerFiles } = require("./media.cjs");
+const { MotionKit } = require("./motionkit.cjs");
 
 protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "forma-kit",
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      stream: true,
+    },
+  },
   {
     scheme: "forma-media",
     privileges: {
@@ -35,6 +45,7 @@ let win,
   registry = {},
   outputDirectory,
   allowClose = false;
+let motionKit;
 const productionUrl = pathToFileURL(
   path.join(__dirname, "../dist/index.html"),
 ).href;
@@ -123,6 +134,55 @@ if (gotLock)
         (_webContents, _permission, callback) => callback(false),
       );
       session.defaultSession.setPermissionCheckHandler(() => false);
+      motionKit = new MotionKit({
+        store,
+        userData: app.getPath("userData"),
+        bundledRoot: app.isPackaged
+          ? path.join(process.resourcesPath, "motionkit")
+          : path.join(__dirname, "../vendor/motionkit"),
+        outputDirectory: () => outputDirectory,
+        registerOutput: async (filename) => (await importPaths([filename]))[0],
+        resolveAudio: async (id) => {
+          const filename = registry[id];
+          return filename &&
+            /\.(mp3|wav|m4a|aac|ogg|flac)$/i.test(filename) &&
+            (await fs.stat(filename).catch(() => null))?.isFile()
+            ? filename
+            : null;
+        },
+        onJob: (job) => {
+          if (win && !win.isDestroyed())
+            win.webContents.send("motionkit:job", job);
+        },
+      });
+      protocol.handle("forma-kit", (request) => motionKit.serve(request));
+      handle("motionkit:status", () => motionKit.status());
+      handle("motionkit:preview", (id) => motionKit.preview(id));
+      handle("motionkit:export", (options) => motionKit.start(options));
+      handle("motionkit:cancel", () => motionKit.cancel());
+      handle("motionkit:exports", () => motionKit.exports());
+      handle("motionkit:choose", async () => {
+        if (motionKit.active)
+          throw new Error("Stop the export before changing projects.");
+        const result = await dialog.showOpenDialog(win, {
+          title: "Choose a MotionKit project",
+          properties: ["openDirectory"],
+        });
+        return result.canceled ? null : motionKit.choose(result.filePaths[0]);
+      });
+      handle("motionkit:reveal", async (id) => {
+        const record = (await motionKit.exports()).find(
+          (record) => record.id === id,
+        );
+        if (!record || record.missing)
+          throw new Error("That export has moved or is no longer available.");
+        shell.showItemInFolder(record.path);
+      });
+      handle("motionkit:open-project", async () => {
+        await motionKit.ensure();
+        const error = await shell.openPath(motionKit.root);
+        if (error) throw new Error(error);
+      });
       protocol.handle("forma-media", async (request) => {
         const url = new URL(request.url);
         const filename =
@@ -154,6 +214,7 @@ if (gotLock)
         else if (action === "close") win.close();
       });
       handle("close:ready", async () => {
+        await motionKit.close();
         await store.queue;
         allowClose = true;
         win.close();
@@ -231,7 +292,7 @@ if (gotLock)
       });
       createWindow();
       app.on("activate", () => {
-        if (BrowserWindow.getAllWindows().length === 0) createWindow();
+        if (!win) createWindow();
       });
     })
     .catch((error) => {

@@ -9,6 +9,8 @@ import { ArrowRight, Check, FolderOpen, Upload, X } from "lucide-react";
 import { TitleBar } from "./components/TitleBar";
 import { Sidebar } from "./components/Sidebar";
 import { SidebarPanel } from "./components/SidebarPanel";
+import { MotionKitStudio, SavedVideos } from "./components/MotionKitStudio";
+import { useMotionKit } from "./lib/useMotionKit";
 import { Workspace } from "./components/Workspace";
 import { SettingsModal } from "./components/SettingsModal";
 import {
@@ -92,12 +94,19 @@ export default function App() {
   const session =
     state.sessions.find((s) => s.id === state.activeId) || state.sessions[0];
   const working = progress !== null;
+  const kit = useMotionKit(ready);
   const notify = useCallback((message: string) => {
     setNotice(message);
     clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setNotice(""), 7500);
   }, []);
   const closeSettings = useCallback(() => setSettings(null), []);
+  useEffect(() => {
+    if (kit.job?.status === "completed")
+      notify("MotionKit export ready. Your video is in Saved videos.");
+    else if (kit.job?.status === "failed" || kit.job?.status === "cancelled")
+      notify(kit.job.message);
+  }, [kit.job?.id, kit.job?.status, notify]);
   useLayoutEffect(() => {
     if (!ready) return;
     document.documentElement.dataset.theme = state.preferences.theme;
@@ -455,36 +464,60 @@ export default function App() {
             }}
             onSettings={() => setSettings("Claude")}
             busy={working}
+            filmCount={kit.status?.films.length || 0}
+            videoCount={
+              kit.status?.exports.filter((video) => !video.missing).length || 0
+            }
           />
         </SidebarPanel>
-        <Workspace
-          page={page}
-          session={session}
-          preferences={state.preferences}
-          progress={progress}
-          onChange={changeSession}
-          onImport={() => void importFiles()}
-          onRun={run}
-          onStop={() => {
-            setProgress(null);
-            notify("Demo stopped. Your brief and files are saved.");
-          }}
-          onMore={() => setSettings("Skills")}
-          onNotice={notify}
-          onTemplate={newEdit}
-          onEditor={() => setPage("editor")}
-          onDelete={deleteEdit}
-        />
+        {page === "motionkit" ? (
+          <MotionKitStudio
+            status={kit.status}
+            job={kit.job}
+            busy={kit.busy}
+            error={kit.error}
+            onRefresh={kit.refresh}
+            onNotice={notify}
+            onLibrary={() => setPage("saved")}
+          />
+        ) : page === "saved" ? (
+          <SavedVideos
+            videos={kit.status?.exports || []}
+            onMotionKit={() => setPage("motionkit")}
+            onNotice={notify}
+          />
+        ) : (
+          <Workspace
+            page={page}
+            session={session}
+            preferences={state.preferences}
+            progress={progress}
+            onChange={changeSession}
+            onImport={() => void importFiles()}
+            onRun={run}
+            onStop={() => {
+              setProgress(null);
+              notify("Demo stopped. Your brief and files are saved.");
+            }}
+            onMore={() => setSettings("Skills")}
+            onNotice={notify}
+            onTemplate={newEdit}
+            onEditor={() => setPage("editor")}
+            onDelete={deleteEdit}
+          />
+        )}
       </div>
       <footer className="statusbar">
         <div>
           <span
-            className={`status-dot ${working ? "accent pulse" : "accent"}`}
+            className={`status-dot ${working || kit.busy ? "accent pulse" : "accent"}`}
           />
           <span>
-            {working
-              ? `Demo — ${phases[Math.min(3, Math.floor(progress / 25))]}`
-              : "Ready — local workspace"}
+            {kit.busy
+              ? `MotionKit — ${kit.job?.message}`
+              : working
+                ? `Demo — ${phases[Math.min(3, Math.floor(progress / 25))]}`
+                : "Ready — local workspace"}
           </span>
           <span className="status-separator" />
           <span className="save-status">
@@ -580,6 +613,10 @@ export default function App() {
           onChange={changePreferences}
           onClose={closeSettings}
           onNotice={notify}
+          onMotionKit={() => {
+            closeSettings();
+            setPage("motionkit");
+          }}
         />
       )}
       <input

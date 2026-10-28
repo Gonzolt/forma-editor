@@ -9,6 +9,7 @@ import "@fontsource/jetbrains-mono/latin-400.css";
 import App from "./App";
 import "./styles.css";
 import "./appearance.css";
+import "./motionkit.css";
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <App />

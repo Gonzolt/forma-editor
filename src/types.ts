@@ -1,5 +1,5 @@
 export type Aspect = "9:16" | "16:9" | "1:1" | "4:5";
-export type Page = "editor" | "saved" | "templates";
+export type Page = "editor" | "saved" | "templates" | "motionkit";
 export type SettingsTab =
   "Claude" | "Skills" | "Export" | "Storage" | "Shortcuts";
 export interface MediaFile {
@@ -49,6 +49,17 @@ export interface ConnectionInfo {
   encryptionAvailable: boolean;
 }
 export interface DesktopBridge {
+  motionKit: {
+    status: () => Promise<MotionKitStatus>;
+    preview: (id: string) => Promise<KitPreview>;
+    export: (options: KitExportOptions) => Promise<KitJob>;
+    cancel: () => Promise<void>;
+    exports: () => Promise<VideoExport[]>;
+    chooseProject: () => Promise<MotionKitStatus | null>;
+    openProject: () => Promise<void>;
+    revealExport: (id: string) => Promise<void>;
+    onJob: (callback: (job: KitJob) => void) => () => void;
+  };
   setTheme: (theme: "light" | "dark") => Promise<void>;
   platform: string;
   window: (action: "minimize" | "maximize" | "close") => Promise<void>;
@@ -63,6 +74,75 @@ export interface DesktopBridge {
   openOutput: () => Promise<void>;
   onCloseRequest: (callback: () => void) => () => void;
   closeReady: () => Promise<void>;
+}
+export interface KitFilm {
+  id: string;
+  name: string;
+  brand: string;
+  url: string;
+}
+export interface KitGuide {
+  id: string;
+  name: string;
+  description: string;
+  content: string;
+}
+export interface KitPreview extends KitFilm {
+  duration: number;
+  width: number;
+  height: number;
+}
+export interface KitExportOptions {
+  filmId: string;
+  quality: "360p" | "720p" | "1080p" | "4K";
+  fps: number;
+  from: number;
+  to: number;
+  audioId?: string;
+}
+export interface VideoExport {
+  id: string;
+  title: string;
+  filmId: string;
+  name: string;
+  path: string;
+  url: string;
+  size: number;
+  duration: number;
+  width: number;
+  height: number;
+  fps: number;
+  createdAt: number;
+  hasAudio: boolean;
+  missing?: boolean;
+}
+export interface KitJob {
+  id: string;
+  filmId: string;
+  status:
+    | "preparing"
+    | "rendering"
+    | "encoding"
+    | "verifying"
+    | "completed"
+    | "cancelled"
+    | "failed";
+  progress: number;
+  frame: number;
+  total: number;
+  message: string;
+  revision: number;
+  result?: VideoExport;
+}
+export interface MotionKitStatus {
+  root: string;
+  source: string;
+  revision: string;
+  films: KitFilm[];
+  guides: KitGuide[];
+  encoderReady: boolean;
+  job: KitJob | null;
+  exports: VideoExport[];
 }
 declare global {
   interface Window {

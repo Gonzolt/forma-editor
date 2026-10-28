@@ -16,6 +16,7 @@ interface Props {
   onChange: (patch: Partial<Preferences>) => void;
   onClose: () => void;
   onNotice: (message: string) => void;
+  onMotionKit: () => void;
 }
 export function SettingsModal({
   initialTab,
@@ -23,6 +24,7 @@ export function SettingsModal({
   onChange,
   onClose,
   onNotice,
+  onMotionKit,
 }: Props) {
   const [tab, setTab] = useState(initialTab);
   const [key, setKey] = useState("");
@@ -283,8 +285,8 @@ export function SettingsModal({
           {tab === "Skills" && (
             <>
               <p className="settings-description">
-                Choose which tools appear in your composer. Execution will be
-                added with the editing engine.
+                Choose which tools appear in your composer. These prompt skills
+                are currently used by the demo workflow.
               </p>
               <div className="skill-settings">
                 {skills.map((s) => (
@@ -311,16 +313,20 @@ export function SettingsModal({
                 ))}
               </div>
               <p className="field-help">
-                Motion Kit and third-party skill plugins are reserved for a
-                future edition.
+                MotionKit’s repository includes its own editing, motion, audio
+                and finishing guides.
               </p>
+              <button className="button" onClick={onMotionKit}>
+                Browse MotionKit skills
+                <ArrowUpRight size={14} />
+              </button>
             </>
           )}
           {tab === "Export" && (
             <>
               <p className="settings-description">
-                Set the starting point for new edits. Video export is not
-                available in this edition.
+                Set the starting point for new edit briefs. Choose MotionKit
+                export settings in its studio.
               </p>
               <label className="field-label" htmlFor="default-aspect">
                 Default format
@@ -354,8 +360,8 @@ export function SettingsModal({
                 ))}
               </select>
               <div className="settings-note">
-                MP4 is the planned output format. No files are transcoded in
-                this build.
+                MotionKit can export real MP4 videos. Prompt-based AI editing
+                remains a demo workflow.
               </div>
             </>
           )}
@@ -365,7 +371,7 @@ export function SettingsModal({
                 Your edit sessions save automatically on this device. Imported
                 media stays in its original location.
               </p>
-              <label className="field-label">Future export folder</label>
+              <label className="field-label">Export folder</label>
               <div className="folder-path">
                 <FolderOpen size={18} />
                 <span>{preferences.outputDirectory || "Videos / Forma"}</span>

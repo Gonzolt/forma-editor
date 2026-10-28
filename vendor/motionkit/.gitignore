@@ -1,0 +1,13 @@
+node_modules/
+.venv/
+out/
+*.mp4
+!media/*.mp4
+*.mov
+*.wav
+*.mp3
+*.m4a
+.env
+.env.*
+__pycache__/
+!.claude/skills/agent-sounds/hooks/sounds/**/*.wav
