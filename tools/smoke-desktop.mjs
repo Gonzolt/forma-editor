@@ -21,9 +21,9 @@ async function launch() {
   });
   const page = await app.firstWindow();
   page.on("pageerror", (e) => errors.push(e.message));
-  await expect(
-    page.getByRole("heading", { name: "Drop it in. Say the word." }),
-  ).toBeVisible();
+  await expect(page.getByRole("region", { name: "Edit composer" })).toBeVisible(
+    { timeout: 15000 },
+  );
   await page.evaluate(() => document.fonts.ready);
   return page;
 }

@@ -85,6 +85,9 @@ function createWindow() {
       win.webContents.send("close:request");
     }
   });
+  win.on("closed", () => {
+    win = null;
+  });
   win.once("ready-to-show", () => win.show());
   win.loadURL(allowedUrl);
 }
@@ -94,7 +97,7 @@ app.on("second-instance", () => {
   if (win) {
     if (win.isMinimized()) win.restore();
     win.focus();
-  }
+  } else if (app.isReady()) createWindow();
 });
 if (gotLock)
   app

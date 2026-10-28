@@ -4,6 +4,14 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      upload_artifacts:
+        description: Upload installers and screenshots (requires available artifact storage)
+        type: boolean
+        default: false
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
@@ -40,6 +48,7 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
       - uses: actions/upload-artifact@v4
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_artifacts }}
         with:
           name: Forma-${{ runner.os }}-${{ matrix.arch }}
           path: |
@@ -47,8 +56,10 @@ jobs:
             release/*.dmg
             release/*.zip
           if-no-files-found: error
+          retention-days: 7
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && inputs.upload_artifacts }}
         with:
           name: Screenshots-${{ runner.os }}-${{ matrix.arch }}
           path: test-results/*.png
+          retention-days: 7

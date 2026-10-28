@@ -64,7 +64,7 @@ npm run dist:mac -- --arm64
 npm run dist:mac -- --x64
 ```
 
-Packages appear in `release/`. The GitHub Actions workflow builds Windows x64, macOS Apple Silicon and macOS Intel and uploads private workflow artifacts. It does not publish a release. The initial Windows installer is unsigned; macOS builds are not notarized. Public distribution should add platform signing credentials and notarization. A macOS build cannot be verified on Windows.
+Packages appear in `release/`. The GitHub Actions workflow tests and builds Windows x64, macOS Apple Silicon and macOS Intel. To download private workflow artifacts, run it manually with **Upload installers and screenshots** enabled; this requires available GitHub artifact storage. Routine push builds do not upload artifacts. It does not publish a release. The initial Windows installer is unsigned; macOS builds are not notarized. Public distribution should add platform signing credentials and notarization. A macOS build cannot be verified on Windows.
 
 ## Checks
 

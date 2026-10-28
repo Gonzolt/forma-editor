@@ -11,7 +11,7 @@ import type { EditSession, MediaFile, Page, Preferences } from "../types";
 import { bytes, duration } from "../lib/bridge";
 import { templates } from "../lib/skills";
 import { Composer } from "./Composer";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 interface Props {
   page: Page;
   session: EditSession;
@@ -30,6 +30,7 @@ interface Props {
 export function Workspace(props: Props) {
   const { page, session, progress, onImport, onNotice } = props;
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const closePreview = useCallback(() => setPreviewId(null), []);
   const preview = session.files.find((f) => f.id === previewId);
   const total = session.files.reduce((n, f) => n + f.size, 0);
   const seconds = session.files.reduce((n, f) => n + (f.duration || 0), 0);
@@ -204,7 +205,7 @@ export function Workspace(props: Props) {
       {preview && (
         <MediaPreview
           file={preview}
-          onClose={() => setPreviewId(null)}
+          onClose={closePreview}
           onNotice={onNotice}
         />
       )}
