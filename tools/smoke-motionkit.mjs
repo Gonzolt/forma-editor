@@ -8,7 +8,10 @@ import os from "node:os";
 import assert from "node:assert/strict";
 const require = createRequire(import.meta.url);
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const profile = await fs.mkdtemp(path.join(os.tmpdir(), "forma-motionkit-"));
+// Native pickers resolve Windows short names and macOS /var symlinks.
+const profile = await fs.realpath(
+  await fs.mkdtemp(path.join(os.tmpdir(), "forma-motionkit-")),
+);
 const output = path.join(profile, "Finished videos");
 const artifacts = path.join(root, "test-results");
 await fs.mkdir(artifacts, { recursive: true });

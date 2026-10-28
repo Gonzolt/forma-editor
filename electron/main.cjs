@@ -52,6 +52,10 @@ let win,
   allowClose = false;
 let motionKit;
 let updates;
+let quitRequested = false;
+app.on("before-quit", () => {
+  quitRequested = true;
+});
 const checkOnLaunch =
   !process.env.FORMA_TEST_DATA || !!process.env.FORMA_UPDATE_FIXTURE;
 function checkUpdatesAtLaunch() {
@@ -287,7 +291,10 @@ if (gotLock)
         await motionKit.close();
         await store.queue;
         allowClose = true;
-        win.close();
+        // app.quit() was cancelled when the first close was deferred for saving.
+        // Resume it explicitly: macOS otherwise keeps the windowless app alive.
+        if (quitRequested) app.quit();
+        else win.close();
       });
       handle("state:load", async () => {
         const state = await store.read("state");
