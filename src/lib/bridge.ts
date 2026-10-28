@@ -1,5 +1,7 @@
 import type { AppState, MediaFile, Preferences } from "../types";
 export const defaults: Preferences = {
+  theme: "light",
+  sidebarCollapsed: false,
   demoMode: false,
   defaultModel: "Claude Sonnet",
   outputDirectory: "",

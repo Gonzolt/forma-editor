@@ -8,6 +8,7 @@ const {
   safeStorage,
   shell,
   session,
+  nativeTheme,
 } = require("electron");
 const fs = require("node:fs/promises");
 const path = require("node:path");
@@ -63,7 +64,7 @@ function createWindow() {
     minWidth: 760,
     minHeight: 660,
     frame: false,
-    backgroundColor: "#F1F0EB",
+    backgroundColor: nativeTheme.themeSource === "dark" ? "#1d1c19" : "#F1F0EB",
     title: "Forma",
     icon: path.join(__dirname, "../build/icon.png"),
     show: false,
@@ -105,6 +106,9 @@ if (gotLock)
     .then(async () => {
       store = new JsonStore(app.getPath("userData"));
       try {
+        const saved = await store.read("state");
+        nativeTheme.themeSource =
+          saved?.preferences?.theme === "dark" ? "dark" : "light";
         registry = await store.read("media", {});
         outputDirectory = await store.read(
           "output",
@@ -136,6 +140,12 @@ if (gotLock)
             status: 404,
           });
         }
+      });
+      handle("theme:set", (theme) => {
+        if (!["light", "dark"].includes(theme))
+          throw new Error("Invalid theme.");
+        nativeTheme.themeSource = theme;
+        win.setBackgroundColor(theme === "dark" ? "#1d1c19" : "#F1F0EB");
       });
       handle("window", (action) => {
         if (action === "minimize") win.minimize();

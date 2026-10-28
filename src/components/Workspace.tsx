@@ -68,6 +68,37 @@ export function Workspace(props: Props) {
               <p>Video, audio or images — drag them anywhere on this window.</p>
             </div>
             <div className="hero">
+              <svg
+                className="hero-filters"
+                width="0"
+                height="0"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <defs>
+                  <filter
+                    id="hero-paper-cutout"
+                    colorInterpolationFilters="sRGB"
+                  >
+                    {/* Separate warm skin tones from the near-neutral paper matte. */}
+                    <feColorMatrix
+                      type="matrix"
+                      values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  40 0 -40 0 -2.2"
+                      result="cutout"
+                    />
+                    <feGaussianBlur
+                      in="cutout"
+                      stdDeviation="0.35"
+                      result="softened"
+                    />
+                    <feComposite
+                      in="softened"
+                      in2="SourceGraphic"
+                      operator="in"
+                    />
+                  </filter>
+                </defs>
+              </svg>
               <img
                 src="./hands.png"
                 alt="Two outstretched hands reaching toward each other"

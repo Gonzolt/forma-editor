@@ -1,4 +1,4 @@
-import { Minus, Settings2, Square, X } from "lucide-react";
+import { Minus, Moon, Settings2, Square, Sun, X } from "lucide-react";
 import { desktop } from "../lib/bridge";
 export function Brand({ large = false }: { large?: boolean }) {
   return (
@@ -15,9 +15,13 @@ export function Brand({ large = false }: { large?: boolean }) {
 export function TitleBar({
   onSettings,
   onError,
+  theme,
+  onToggleTheme,
 }: {
   onSettings: () => void;
   onError: (message: string) => void;
+  theme: "light" | "dark";
+  onToggleTheme: () => void;
 }) {
   const control = async (action: "minimize" | "maximize" | "close") => {
     try {
@@ -36,6 +40,18 @@ export function TitleBar({
         </span>
       </div>
       <div className="window-controls">
+        <button
+          className="icon-button theme-toggle"
+          aria-label={
+            theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+          }
+          title={
+            theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+          }
+          onClick={onToggleTheme}
+        >
+          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
         <button
           className="icon-button title-settings"
           aria-label="Open settings"

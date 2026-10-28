@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer, webUtils } = require("electron");
 const invoke = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
 contextBridge.exposeInMainWorld("forma", {
+  setTheme: (theme) => invoke("theme:set", theme),
   platform: process.platform,
   window: (action) => invoke("window", action),
   load: () => invoke("state:load"),

@@ -1,7 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { ArrowRight, Check, FolderOpen, Upload, X } from "lucide-react";
 import { TitleBar } from "./components/TitleBar";
 import { Sidebar } from "./components/Sidebar";
+import { SidebarPanel } from "./components/SidebarPanel";
 import { Workspace } from "./components/Workspace";
 import { SettingsModal } from "./components/SettingsModal";
 import {
@@ -91,6 +98,13 @@ export default function App() {
     toastTimer.current = setTimeout(() => setNotice(""), 7500);
   }, []);
   const closeSettings = useCallback(() => setSettings(null), []);
+  useLayoutEffect(() => {
+    if (!ready) return;
+    document.documentElement.dataset.theme = state.preferences.theme;
+    desktop
+      ?.setTheme(state.preferences.theme)
+      .catch(() => notify("Could not update the native window theme."));
+  }, [ready, state.preferences.theme, notify]);
   useEffect(() => {
     let alive = true;
     loadState()
@@ -411,22 +425,38 @@ export default function App() {
     );
   return (
     <div className="app-shell">
-      <TitleBar onSettings={() => setSettings("Claude")} onError={notify} />
+      <TitleBar
+        onSettings={() => setSettings("Claude")}
+        onError={notify}
+        theme={state.preferences.theme}
+        onToggleTheme={() =>
+          changePreferences({
+            theme: state.preferences.theme === "dark" ? "light" : "dark",
+          })
+        }
+      />
       <div className="app-body">
-        <Sidebar
-          sessions={state.sessions}
-          activeId={session.id}
-          page={page}
-          demo={state.preferences.demoMode}
-          onPage={setPage}
-          onNew={() => newEdit()}
-          onSelect={(id) => {
-            setState((s) => ({ ...s, activeId: id }));
-            setPage("editor");
-          }}
-          onSettings={() => setSettings("Claude")}
-          busy={working}
-        />
+        <SidebarPanel
+          collapsed={state.preferences.sidebarCollapsed}
+          onChange={(sidebarCollapsed) =>
+            changePreferences({ sidebarCollapsed })
+          }
+        >
+          <Sidebar
+            sessions={state.sessions}
+            activeId={session.id}
+            page={page}
+            demo={state.preferences.demoMode}
+            onPage={setPage}
+            onNew={() => newEdit()}
+            onSelect={(id) => {
+              setState((s) => ({ ...s, activeId: id }));
+              setPage("editor");
+            }}
+            onSettings={() => setSettings("Claude")}
+            busy={working}
+          />
+        </SidebarPanel>
         <Workspace
           page={page}
           session={session}

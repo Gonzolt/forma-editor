@@ -148,7 +148,7 @@ export function Sidebar({
           <kbd>⌘ / CTRL ,</kbd>
         </button>
         <div className="sidebar-edition eyebrow">
-          FORMA STUDIO <span>EARLY EDITION · 0.1</span>
+          FORMA STUDIO <span>EARLY EDITION · 0.2</span>
         </div>
       </div>
     </aside>

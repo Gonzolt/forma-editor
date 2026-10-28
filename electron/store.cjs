@@ -96,6 +96,9 @@ function validateState(state) {
   const p = state.preferences;
   if (
     !p ||
+    (p.theme !== undefined && !["light", "dark"].includes(p.theme)) ||
+    (p.sidebarCollapsed !== undefined &&
+      typeof p.sidebarCollapsed !== "boolean") ||
     typeof p.demoMode !== "boolean" ||
     !str(p.defaultModel, 100) ||
     !str(p.outputDirectory, 2000) ||

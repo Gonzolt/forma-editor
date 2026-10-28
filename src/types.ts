@@ -30,6 +30,8 @@ export interface EditPlan {
   summary: string;
 }
 export interface Preferences {
+  theme: "light" | "dark";
+  sidebarCollapsed: boolean;
   demoMode: boolean;
   defaultModel: string;
   outputDirectory: string;
@@ -47,6 +49,7 @@ export interface ConnectionInfo {
   encryptionAvailable: boolean;
 }
 export interface DesktopBridge {
+  setTheme: (theme: "light" | "dark") => Promise<void>;
   platform: string;
   window: (action: "minimize" | "maximize" | "close") => Promise<void>;
   load: () => Promise<AppState | null>;

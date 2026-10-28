@@ -11,7 +11,36 @@
   --hover: #dedbd3;
   --accent: #b23a1b;
   --success: #2f7d4f;
+  --primary-hover: #35332e;
+  --selection: #dfb5a7;
+  --scrim: rgba(26, 25, 23, 0.38);
+  --drop-surface: rgba(241, 240, 235, 0.96);
+  --error-surface: #f6e9e2;
   --font-display: "Instrument Serif", Georgia, serif;
   --font-ui: "Inter Tight", Arial, sans-serif;
   --font-mono: "JetBrains Mono", Consolas, monospace;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #1d1c19;
+  --sidebar: #24221e;
+  --card: #2b2823;
+  --card-footer: #25231f;
+  --ink: #f3ede2;
+  --secondary: #d2c9bb;
+  --muted: #b3aa9c;
+  --border: #413c34;
+  --border-strong: #595145;
+  --hover: #38332b;
+  --accent: #f2a286;
+  --success: #a3c899;
+  --primary-hover: #dfd5c5;
+  --selection: #76523e;
+  --scrim: rgba(0, 0, 0, 0.65);
+  --drop-surface: rgba(29, 28, 25, 0.97);
+  --error-surface: #492c24;
 }

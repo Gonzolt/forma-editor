@@ -58,6 +58,33 @@ test("IPC storage rejects malformed sessions, oversized data and invalid setting
     },
   };
   assert.equal(validateState(valid), valid);
+  assert.equal(
+    validateState({
+      ...valid,
+      preferences: {
+        ...valid.preferences,
+        theme: "dark",
+        sidebarCollapsed: true,
+      },
+    }).preferences.theme,
+    "dark",
+  );
+  assert.throws(
+    () =>
+      validateState({
+        ...valid,
+        preferences: { ...valid.preferences, theme: "invalid" },
+      }),
+    /Invalid/,
+  );
+  assert.throws(
+    () =>
+      validateState({
+        ...valid,
+        preferences: { ...valid.preferences, sidebarCollapsed: "yes" },
+      }),
+    /Invalid/,
+  );
   assert.throws(() => validateState(null), /Invalid/);
   assert.throws(() => validateState({ ...valid, sessions: [{}] }), /Invalid/);
   assert.throws(

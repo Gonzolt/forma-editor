@@ -6,9 +6,18 @@ A Windows and macOS desktop foundation for an approachable, prompt-driven video 
 
 ![Forma main window](docs/preview.png)
 
+<details>
+<summary>Dark mode preview</summary>
+
+![Forma in dark mode](docs/dark-mode.png)
+
+</details>
+
 ## What works today
 
 - Native frameless window with minimize, maximize, close and single-instance handling.
+- Light and dark modes using the sun/moon control in the title bar. Your choice is saved locally.
+- A sliding sidebar: click the edge arrow, use Enter/Space, or drag it inward/outward. Its position is remembered between launches.
 - Native file selection and whole-window file drop for video, audio and images.
 - File metadata, duration when the codec supports it, source previews and removing attachments.
 - Prompt composer, suggestions, `/` skill picker and `@` file mentions.

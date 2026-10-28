@@ -30,6 +30,49 @@ async function launch() {
 try {
   let page = await launch();
   await page.screenshot({ path: path.join(artifacts, "01-empty.png") });
+  const sidebarWidth = await page
+    .locator(".sidebar-panel")
+    .evaluate((element) => getComputedStyle(element).width);
+  await page.getByRole("button", { name: "Switch to dark mode" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await page.getByRole("button", { name: "Collapse sidebar" }).click();
+  await expect(page.locator(".sidebar-panel")).toHaveCSS("width", "0px");
+  await expect(page.locator("#sidebar-content")).toHaveAttribute("inert", "");
+  await page.screenshot({
+    path: path.join(artifacts, "05-dark-collapsed.png"),
+  });
+  await page.getByRole("button", { name: "Expand sidebar" }).press("Space");
+  await expect(
+    page.getByRole("button", { name: "Collapse sidebar" }),
+  ).toHaveAttribute("aria-expanded", "true");
+  await expect(page.locator(".sidebar-panel")).toHaveCSS("width", sidebarWidth);
+  const collapse = await page
+    .getByRole("button", { name: "Collapse sidebar" })
+    .boundingBox();
+  await page.mouse.move(
+    collapse.x + collapse.width / 2,
+    collapse.y + collapse.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(collapse.x - 65, collapse.y + collapse.height / 2, {
+    steps: 5,
+  });
+  await page.mouse.up();
+  await expect(page.locator(".sidebar-panel")).toHaveCSS("width", "0px");
+  const expand = await page
+    .getByRole("button", { name: "Expand sidebar" })
+    .boundingBox();
+  await page.mouse.move(
+    expand.x + expand.width / 2,
+    expand.y + expand.height / 2,
+  );
+  await page.mouse.down();
+  await page.mouse.move(expand.x + 80, expand.y + expand.height / 2, {
+    steps: 5,
+  });
+  await page.mouse.up();
+  await expect(page.locator(".sidebar-panel")).toHaveCSS("width", sidebarWidth);
+  await page.screenshot({ path: path.join(artifacts, "06-dark-expanded.png") });
   await page.getByRole("button", { name: "Run edit", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
   await expect(
@@ -144,6 +187,10 @@ try {
       document.querySelector("main").scrollWidth > innerWidth,
   );
   if (overflow) throw new Error("Narrow layout overflows horizontally");
+  await page.getByRole("button", { name: "Collapse sidebar" }).click();
+  await expect(page.locator(".sidebar-panel")).toHaveCSS("height", "0px");
+  await page.getByRole("button", { name: "Expand sidebar" }).click();
+  await expect(page.locator(".sidebar-panel")).toHaveCSS("height", "65px");
   await page.screenshot({ path: path.join(artifacts, "04-narrow.png") });
   await app.evaluate(({ BrowserWindow }) =>
     BrowserWindow.getAllWindows()[0].setSize(1440, 940),
@@ -169,9 +216,15 @@ try {
     page.getByRole("img", { name: "hands.png", exact: true }),
   ).toHaveJSProperty("naturalWidth", 740);
   await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Collapse sidebar" }).click();
   await app.close();
   await fs.rm(fixture);
   page = await launch();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(
+    page.getByRole("button", { name: "Expand sidebar" }),
+  ).toHaveAttribute("aria-expanded", "false");
+  await expect(page.locator(".sidebar-panel")).toHaveCSS("width", "0px");
   await expect(page.getByText("REIMPORT", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Run edit", exact: true }).click();
   await expect(page.getByRole("status")).toContainText(
@@ -180,7 +233,7 @@ try {
   await expect(page.getByRole("progressbar")).toHaveCount(0);
   if (errors.length) throw new Error("Renderer errors: " + errors.join("\n"));
   console.log(
-    "PASS: native import + preview, safe credential storage, demo gating, suggestions, skills, aspect, cancel, completion, templates, keyboard, responsive layout, restart persistence and missing-file recovery.",
+    "PASS: dark mode, sidebar click/keyboard/drag, saved appearance, native import + preview, safe credential storage, demo workflow, templates, responsive layout, restart persistence and missing-file recovery.",
   );
   console.log("Screenshots: " + artifacts);
 } finally {
