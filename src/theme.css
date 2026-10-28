@@ -1,0 +1,17 @@
+:root {
+  --paper: #f1f0eb;
+  --sidebar: #eae8e1;
+  --card: #fbfaf7;
+  --card-footer: #f2f0ea;
+  --ink: #1a1917;
+  --secondary: #4a4843;
+  --muted: #6b6862;
+  --border: #e2dfd7;
+  --border-strong: #d9d6ce;
+  --hover: #dedbd3;
+  --accent: #b23a1b;
+  --success: #2f7d4f;
+  --font-display: "Instrument Serif", Georgia, serif;
+  --font-ui: "Inter Tight", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, monospace;
+}
