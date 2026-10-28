@@ -11,6 +11,7 @@ import type { ConnectionInfo, Preferences, SettingsTab } from "../types";
 import { desktop } from "../lib/bridge";
 import { skills } from "../lib/skills";
 import { UpdatesPanel, type UpdatesPanelProps } from "./UpdatesPanel";
+import { ClaudeAccount } from "./ClaudeAccount";
 interface Props {
   initialTab: SettingsTab;
   preferences: Preferences;
@@ -176,27 +177,19 @@ export function SettingsModal({
           </h3>
           {tab === "Claude" && (
             <>
+              <ClaudeAccount />
               <div className="connection-status">
                 <span className="status-dot accent" />
                 <div>
                   <strong>
-                    {connection.hasKey
-                      ? "API key saved"
-                      : "Claude is not connected"}
+                    {connection.hasKey ? "API key saved" : "No API key saved"}
                   </strong>
                   <p>
                     {connection.hasKey
                       ? "Stored securely. Execution adapter coming next."
-                      : "Claude account sign-in is coming in a later edition."}
+                      : "API-key storage is optional and separate from Claude Code sign-in."}
                   </p>
                 </div>
-              </div>
-              <div className="coming-feature">
-                <span className="eyebrow">CLAUDE ACCOUNT</span>
-                <p>
-                  Account sign-in and AI execution are not available in this
-                  foundation build.
-                </p>
               </div>
               <div className="settings-divider eyebrow">
                 OR PREPARE AN API KEY

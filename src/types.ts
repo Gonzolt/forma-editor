@@ -48,7 +48,26 @@ export interface ConnectionInfo {
   hasKey: boolean;
   encryptionAvailable: boolean;
 }
+export interface ClaudeStatus {
+  state: "checking" | "missing" | "signed-in" | "signed-out" | "error";
+  executable: string | null;
+  email: string | null;
+  plan: string | null;
+  authMethod: string | null;
+  signingIn: boolean;
+  loginUrl: string | null;
+  error: string | null;
+}
 export interface DesktopBridge {
+  claude: {
+    status: () => Promise<ClaudeStatus>;
+    login: () => Promise<ClaudeStatus>;
+    cancel: () => Promise<ClaudeStatus>;
+    logout: () => Promise<ClaudeStatus>;
+    chooseExecutable: () => Promise<ClaudeStatus | null>;
+    open: (target: "setup" | "login") => Promise<void>;
+    onStatus: (callback: (status: ClaudeStatus) => void) => () => void;
+  };
   updates: {
     status: () => Promise<UpdateStatus>;
     check: () => Promise<UpdateStatus>;

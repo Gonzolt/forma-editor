@@ -17,6 +17,11 @@ const { JsonStore, validateState } = require("./store.cjs");
 const { extensions, registerFiles } = require("./media.cjs");
 const { MotionKit } = require("./motionkit.cjs");
 const {
+  ClaudeConnection,
+  signInUrl,
+  SETUP_URL,
+} = require("./claude-connection.cjs");
+const {
   UpdateService,
   gitRevision,
   KIT_BASE_REVISION,
@@ -52,6 +57,7 @@ let win,
   allowClose = false;
 let motionKit;
 let updates;
+let claudeConnection;
 let quitRequested = false;
 app.on("before-quit", () => {
   quitRequested = true;
@@ -84,6 +90,7 @@ async function importPaths(paths) {
 }
 function createWindow() {
   allowClose = false;
+  claudeConnection?.reopen();
   win = new BrowserWindow({
     width: 1440,
     height: 880,
@@ -214,6 +221,44 @@ if (gotLock)
             win.webContents.send("updates:status", state);
         },
       });
+      const claudeTest =
+        process.env.FORMA_TEST_DATA && process.env.FORMA_CLAUDE_FIXTURE
+          ? require("./claude-fixture.cjs").claudeFixture(
+              process.env.FORMA_CLAUDE_FIXTURE,
+              app.getPath("userData"),
+            )
+          : {};
+      claudeConnection = new ClaudeConnection({
+        store,
+        ...claudeTest,
+        onChange: (state) => {
+          if (win && !win.isDestroyed())
+            win.webContents.send("claude:status", state);
+        },
+      });
+      handle("claude:status", () => claudeConnection.check());
+      handle("claude:login", () => claudeConnection.login());
+      handle("claude:cancel", () => claudeConnection.cancelLogin());
+      handle("claude:logout", () => claudeConnection.logout());
+      handle("claude:choose", async () => {
+        const result = await dialog.showOpenDialog(win, {
+          title: "Choose the native Claude Code executable",
+          properties: ["openFile"],
+          ...(process.platform === "win32"
+            ? { filters: [{ name: "Claude Code", extensions: ["exe"] }] }
+            : {}),
+        });
+        return result.canceled
+          ? null
+          : claudeConnection.choose(result.filePaths[0]);
+      });
+      handle("claude:open", (target) => {
+        if (target === "setup") return shell.openExternal(SETUP_URL);
+        const url = claudeConnection.snapshot().loginUrl;
+        if (target === "login" && url && signInUrl(url) === url)
+          return shell.openExternal(url);
+        throw new Error("No Claude sign-in page is available.");
+      });
       handle("updates:status", () => updates.snapshot());
       handle("updates:check", () => updates.check());
       handle("updates:open", (target) => {
@@ -287,6 +332,7 @@ if (gotLock)
         else if (action === "close") win.close();
       });
       handle("close:ready", async () => {
+        await claudeConnection.close();
         await updates.close();
         await motionKit.close();
         await store.queue;

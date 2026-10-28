@@ -1,6 +1,19 @@
 const { contextBridge, ipcRenderer, webUtils } = require("electron");
 const invoke = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
 contextBridge.exposeInMainWorld("forma", {
+  claude: {
+    status: () => invoke("claude:status"),
+    login: () => invoke("claude:login"),
+    cancel: () => invoke("claude:cancel"),
+    logout: () => invoke("claude:logout"),
+    chooseExecutable: () => invoke("claude:choose"),
+    open: (target) => invoke("claude:open", target),
+    onStatus: (callback) => {
+      const handler = (_event, state) => callback(state);
+      ipcRenderer.on("claude:status", handler);
+      return () => ipcRenderer.removeListener("claude:status", handler);
+    },
+  },
   updates: {
     status: () => invoke("updates:status"),
     check: () => invoke("updates:check"),

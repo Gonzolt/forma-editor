@@ -76,7 +76,7 @@ try {
   await page.getByRole("button", { name: "Run edit", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
   await expect(
-    page.getByText("Claude is not connected", { exact: true }),
+    page.getByText("No API key saved", { exact: true }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Enable demo" }).click();
   await expect(
@@ -99,7 +99,7 @@ try {
       throw new Error("Credential was stored in plaintext");
     await page.getByRole("button", { name: "Remove saved key" }).click();
     await expect(
-      page.getByText("Claude is not connected", { exact: true }),
+      page.getByText("No API key saved", { exact: true }),
     ).toBeVisible();
   } else {
     await expect(

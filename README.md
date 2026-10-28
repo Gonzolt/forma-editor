@@ -32,6 +32,7 @@ A Windows and macOS desktop foundation for an approachable, prompt-driven video 
 - Templates, recent edit search, automatic local session/draft saving and restart recovery.
 - Settings for Claude credentials, skills, export defaults, storage and shortcuts.
 - API-key storage encrypted with Electron `safeStorage`; keys never enter saved projects or the renderer after saving.
+- Claude Code account companion: native CLI discovery, browser sign-in, verified account status, cancellation, sign-out and a picker for custom installations. Credentials remain managed by Claude Code.
 - Explicit, cancelable **demo mode**, producing an example edit plan.
 - A real MotionKit studio with the three bundled example films, a live player, all 25 upstream editing guides, a project-folder picker and refresh after source edits.
 - Native H.264 MP4 exports at 360p/720p/1080p/4K and 24/30/60 fps, with a selectable time range, optional AAC soundtrack, actual frame progress and cancellation.
@@ -43,7 +44,16 @@ A Windows and macOS desktop foundation for an approachable, prompt-driven video 
 
 MotionKit previews and exports are real. The main editor's **Run edit** remains a separate, explicitly simulated prompt workflow. It does not automatically rewrite MotionKit films, inspect your footage, transcribe audio, cut silences, add captions or generate music. File previews depend on Electron's supported codecs; importing a MOV or MKV does not guarantee its codec can be previewed.
 
-Claude account sign-in and execution, voice dictation and a timeline editor are pending. A saved API key is not a verified connection. MotionKit's guides are readable in the app, and their supporting scripts are included in the working project; they are not automatically installed or executed. No external AI services are called and no footage is uploaded.
+Automatic Claude execution, voice dictation and a timeline editor are pending. Claude Code account sign-in is available as a companion connection; it does not enable the demo prompt editor to make AI calls. A saved API key is not a verified connection. MotionKit's guides are readable in the app, and their supporting scripts are included in the working project; they are not automatically installed or executed. No footage is uploaded.
+
+## Sign in through Claude Code
+
+1. Open **Settings → Claude**. Forma looks for your native Claude Code installation in its usual location and on PATH. If it is missing, **Get Claude Code** opens Anthropic's installation instructions. **Choose Claude Code location** supports a custom installation.
+2. If Claude Code already has a saved account, Forma displays its sign-in status. Otherwise choose **Sign in with Claude Code** and finish Anthropic's browser flow. Forma runs the installed CLI's `claude auth login --claudeai`; it does not implement its own OAuth client or collect tokens.
+3. **Check status** reads `claude auth status --json`. Forma exposes only the account email, plan and authentication method. Credentials and refresh remain with Claude Code. A successful check describes the CLI's saved authentication status, not an end-to-end model request.
+4. **Cancel sign-in** stops a pending login without signing out an existing account. **Sign out of Claude Code** explicitly logs out the shared CLI account, including its terminal sessions.
+
+This companion uses your existing Claude Code installation and account configuration. It does not bundle Claude Code or reuse its OAuth tokens for API calls. Anthropic's [CLI reference](https://code.claude.com/docs/en/cli-reference) describes these commands. Automatic AI editing is a separate future integration, subject to Anthropic's supported authentication and permissions.
 
 ## MotionKit workflow
 
@@ -126,6 +136,7 @@ npm run build
 npm run test:desktop
 npm run test:motionkit
 npm run test:updates
+npm run test:claude
 ```
 
 Unit tests cover persistence, import registration, IPC state validation, the pinned MotionKit films/guides and project asset boundaries. Desktop smoke tests use isolated temporary profiles. They check the original editor and appearance controls, and additionally render actual MotionKit frames, reject empty black frames, decode the resulting H.264 MP4, test AAC soundtrack muxing, cancel an active render, play a finished export and restore the library after restart. Screenshots and a short rendered test film are saved in `test-results/`. No real credentials or AI calls are used.

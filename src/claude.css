@@ -1,0 +1,46 @@
+.claude-account {
+  padding: 17px;
+  margin: 0 0 22px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--paper);
+}
+.claude-account-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 14px;
+}
+.claude-account-status > svg {
+  flex-shrink: 0;
+  color: var(--accent);
+}
+.claude-account-status strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.claude-account-status p {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--secondary);
+  margin: 6px 0 14px;
+  overflow-wrap: anywhere;
+}
+.claude-account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+.claude-account .field-help {
+  margin-bottom: 8px;
+}
+.settings-content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+.claude-choose {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
