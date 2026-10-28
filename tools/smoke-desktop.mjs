@@ -74,6 +74,11 @@ try {
   await expect(page.locator(".sidebar-panel")).toHaveCSS("width", sidebarWidth);
   await page.screenshot({ path: path.join(artifacts, "06-dark-expanded.png") });
   await page.getByRole("button", { name: "Run edit", exact: true }).click();
+  await expect(page.getByRole("status")).toContainText(
+    "Add some footage first",
+  );
+  await expect(page.getByRole("dialog", { name: "Settings" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Open settings" }).click();
   await expect(page.getByRole("dialog", { name: "Settings" })).toBeVisible();
   await expect(
     page.getByText("No API key saved", { exact: true }),

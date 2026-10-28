@@ -279,10 +279,6 @@ export default function App() {
       notify("Demo stopped. Your brief and files are saved.");
       return;
     }
-    if (!state.preferences.demoMode) {
-      setSettings("Claude");
-      return;
-    }
     if (!session.files.length) {
       notify("Add some footage first. Click the spark or attach a file.");
       return;
@@ -297,6 +293,14 @@ export default function App() {
       notify("Tell us what you have in mind, or try one of the suggestions.");
       document.querySelector<HTMLTextAreaElement>("#edit-prompt")?.focus();
       return;
+    }
+    // The demo is the only execution path, so Run edit switches it on instead of
+    // sending people to Settings.
+    if (!state.preferences.demoMode) {
+      changePreferences({ demoMode: true });
+      notify(
+        "Run edit is a demo for now: it makes an example plan, with no AI calls or video rendering.",
+      );
     }
     setPage("editor");
     changeSession({ plan: undefined });

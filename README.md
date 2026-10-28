@@ -110,8 +110,7 @@ npm start
 1. Attach media with the spark button, paperclip, `Ctrl/⌘ O`, or a file drop.
 2. Click an attached file to preview it.
 3. Write a brief or choose a suggestion. Select skills and an output format.
-4. Open Settings → Claude → **Enable demo**. Close Settings.
-5. Choose **Run edit** (`Ctrl/⌘ Enter`). Stop cancels the simulation. A completed demo creates an example plan and clearly states that no video was rendered.
+4. Choose **Run edit** (`Ctrl/⌘ Enter`). The first run switches on demo mode, which you can turn off again in Settings → Claude. Stop cancels the simulation. A completed demo creates an example plan and clearly states that no video was rendered.
 
 ## Build desktop packages
 
