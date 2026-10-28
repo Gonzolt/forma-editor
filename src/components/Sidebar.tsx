@@ -15,6 +15,7 @@ interface Props {
   activeId: string;
   page: Page;
   demo: boolean;
+  connected: boolean;
   onPage: (p: Page) => void;
   onNew: () => void;
   onSelect: (id: string) => void;
@@ -28,6 +29,7 @@ export function Sidebar({
   activeId,
   page,
   demo,
+  connected,
   onPage,
   onNew,
   onSelect,
@@ -127,11 +129,17 @@ export function Sidebar({
       <div className="sidebar-bottom">
         <div className={`connection-card ${demo ? "demo-connection" : ""}`}>
           <div className="eyebrow connection-label">
-            <span className={`status-dot ${demo ? "accent" : ""}`} />
-            {demo ? "DEMO WORKSPACE" : "MAKE ROOM FOR AN IDEA"}
+            <span
+              className={`status-dot ${demo || connected ? "accent" : ""}`}
+            />
+            {connected
+              ? "CLAUDE CODE CONNECTED"
+              : demo
+                ? "DEMO WORKSPACE"
+                : "MAKE ROOM FOR AN IDEA"}
           </div>
           <p>
-            {demo ? (
+            {demo && !connected ? (
               <>
                 A little practice.
                 <br />
@@ -146,12 +154,14 @@ export function Sidebar({
             )}
           </p>
           <span className="connection-description">
-            {demo
-              ? "Explore the workflow. No video rendering yet."
-              : "Connect your tools and make something yours."}
+            {connected
+              ? "Claude plans each edit. Your video renders on this device."
+              : demo
+                ? "Explore the workflow. Connect Claude to render videos."
+                : "Connect your tools and make something yours."}
           </span>
           <button className="button connection-button" onClick={onSettings}>
-            {demo ? "Manage connection" : "Connect Claude"}
+            {connected || demo ? "Manage connection" : "Connect Claude"}
             <ArrowUpRight size={15} />
           </button>
         </div>

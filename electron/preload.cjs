@@ -39,6 +39,15 @@ contextBridge.exposeInMainWorld("forma", {
       return () => ipcRenderer.removeListener("motionkit:job", handler);
     },
   },
+  edit: {
+    start: (options) => invoke("edit:start", options),
+    cancel: () => invoke("edit:cancel"),
+    onJob: (callback) => {
+      const handler = (_event, job) => callback(job);
+      ipcRenderer.on("edit:job", handler);
+      return () => ipcRenderer.removeListener("edit:job", handler);
+    },
+  },
   setTheme: (theme) => invoke("theme:set", theme),
   platform: process.platform,
   window: (action) => invoke("window", action),

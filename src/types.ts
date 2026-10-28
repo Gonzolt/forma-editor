@@ -28,6 +28,41 @@ export interface EditPlan {
   title: string;
   steps: string[];
   summary: string;
+  video?: EditVideo;
+}
+export interface EditVideo {
+  id: string;
+  url: string;
+  name: string;
+  width: number;
+  height: number;
+  duration: number;
+}
+export interface EditOptions {
+  sessionId: string;
+  prompt: string;
+  fileIds: string[];
+  skills: string[];
+  aspect: Aspect;
+  length: string;
+  quality: string;
+  model: string;
+}
+export interface EditJob {
+  id: string;
+  sessionId: string;
+  status:
+    | "analyzing"
+    | "planning"
+    | "rendering"
+    | "verifying"
+    | "completed"
+    | "cancelled"
+    | "failed";
+  progress: number;
+  message: string;
+  revision: number;
+  plan?: EditPlan;
 }
 export interface Preferences {
   theme: "light" | "dark";
@@ -84,6 +119,11 @@ export interface DesktopBridge {
     openProject: () => Promise<void>;
     revealExport: (id: string) => Promise<void>;
     onJob: (callback: (job: KitJob) => void) => () => void;
+  };
+  edit: {
+    start: (options: EditOptions) => Promise<EditJob>;
+    cancel: () => Promise<void>;
+    onJob: (callback: (job: EditJob) => void) => () => void;
   };
   setTheme: (theme: "light" | "dark") => Promise<void>;
   platform: string;

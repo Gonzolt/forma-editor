@@ -26,6 +26,7 @@ import { makeDemoPlan, phases } from "./lib/engine";
 import { templates } from "./lib/skills";
 import type {
   AppState,
+  EditJob,
   EditSession,
   MediaFile,
   Page,
@@ -80,6 +81,12 @@ export default function App() {
   const [page, setPage] = useState<Page>("editor");
   const [settings, setSettings] = useState<SettingsTab | null>(null);
   const [progress, setProgress] = useState<number | null>(null);
+  // "edit" runs Claude Code and FFmpeg; "demo" is the offline simulation.
+  const [runMode, setRunMode] = useState<"demo" | "edit">("demo");
+  const [stage, setStage] = useState("");
+  const [claudeReady, setClaudeReady] = useState(false);
+  // Stop can arrive while the edit is still starting; remember it for when start settles.
+  const starting = useRef<{ stopped: boolean } | null>(null);
   const [dragging, setDragging] = useState(false);
   const [notice, setNotice] = useState("");
   const [saveError, setSaveError] = useState("");
@@ -272,11 +279,24 @@ export default function App() {
       notify(e instanceof Error ? e.message : "Could not import those files.");
     }
   };
+  const stop = () => {
+    if (runMode === "edit") {
+      setStage("Stopping");
+      if (starting.current) starting.current.stopped = true;
+      else void desktop?.edit.cancel().catch(() => {});
+      return;
+    }
+    setProgress(null);
+    notify("Demo stopped. Your brief and files are saved.");
+  };
+  const startDemo = () => {
+    setRunMode("demo");
+    setProgress(0);
+  };
   const run = () => {
     if (!session) return;
     if (working) {
-      setProgress(null);
-      notify("Demo stopped. Your brief and files are saved.");
+      stop();
       return;
     }
     if (!session.files.length) {
@@ -294,20 +314,96 @@ export default function App() {
       document.querySelector<HTMLTextAreaElement>("#edit-prompt")?.focus();
       return;
     }
-    // The demo is the only execution path, so Run edit switches it on instead of
-    // sending people to Settings.
-    if (!state.preferences.demoMode) {
-      changePreferences({ demoMode: true });
-      notify(
-        "Run edit is a demo for now: it makes an example plan, with no AI calls or video rendering.",
-      );
-    }
     setPage("editor");
     changeSession({ plan: undefined });
+    if (!desktop) {
+      startDemo();
+      return;
+    }
+    setRunMode("edit");
+    setStage("Starting");
     setProgress(0);
+    const attempt = (starting.current = { stopped: false });
+    desktop.edit
+      .start({
+        sessionId: session.id,
+        prompt: session.prompt,
+        fileIds: session.files.map((f) => f.id),
+        skills: session.skills,
+        aspect: session.aspect,
+        length: session.length,
+        quality: session.quality,
+        model: state.preferences.defaultModel,
+      })
+      .then(() => {
+        if (attempt.stopped) void desktop?.edit.cancel().catch(() => {});
+      })
+      .catch((error: unknown) => {
+        setProgress(null);
+        setStage("");
+        if (attempt.stopped) {
+          notify("Edit stopped. Your brief and files are saved.");
+          return;
+        }
+        const message = (error instanceof Error ? error.message : "")
+          .replace(/^.*?Error: /, "")
+          .trim();
+        if (message.startsWith("[claude-unavailable]")) {
+          if (state.preferences.demoMode) {
+            notify("Claude Code is not connected, so this run is the demo.");
+            startDemo();
+            return;
+          }
+          setSettings("Claude");
+        }
+        notify(
+          message.replace(/^\[[\w-]+\] /, "") || "The edit could not start.",
+        );
+      })
+      .finally(() => {
+        if (starting.current === attempt) starting.current = null;
+      });
   };
   useEffect(() => {
-    if (!working || !session) return;
+    if (!ready || !desktop) return;
+    void desktop.claude
+      .status()
+      .then((s) => setClaudeReady(s.state === "signed-in"))
+      .catch(() => {});
+    return desktop.claude.onStatus((s) =>
+      setClaudeReady(s.state === "signed-in"),
+    );
+  }, [ready]);
+  useEffect(
+    () =>
+      desktop?.edit.onJob((job: EditJob) => {
+        if (["completed", "failed", "cancelled"].includes(job.status)) {
+          setProgress(null);
+          setStage("");
+          if (job.status === "completed" && job.plan) {
+            const plan = job.plan;
+            setState((s) => ({
+              ...s,
+              sessions: s.sessions.map((x) =>
+                x.id === job.sessionId
+                  ? { ...x, plan, updatedAt: Date.now() }
+                  : x,
+              ),
+            }));
+            void kit.refresh();
+            notify("Your edit is ready. It is also in Saved videos.");
+          } else notify(job.message);
+        } else {
+          setProgress(job.progress);
+          setStage(job.message);
+        }
+      }),
+    // kit.refresh and notify are stable callbacks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  useEffect(() => {
+    if (!working || !session || runMode !== "demo") return;
     const snapshot = session;
     const start = performance.now();
     const timer = setInterval(() => {
@@ -331,7 +427,7 @@ export default function App() {
     return () => clearInterval(timer);
     // A run uses a fixed snapshot. Changes are locked until it ends or is stopped.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [working]);
+  }, [working, runMode]);
   useEffect(() => {
     const handle = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
@@ -369,7 +465,7 @@ export default function App() {
       dragDepth.current = 0;
       setDragging(false);
       if (working) {
-        notify("Stop the demo before adding more files.");
+        notify("Stop the edit before adding more files.");
         return;
       }
       if (!e.dataTransfer) return;
@@ -464,6 +560,7 @@ export default function App() {
             activeId={session.id}
             page={page}
             demo={state.preferences.demoMode}
+            connected={claudeReady}
             onPage={setPage}
             onNew={() => newEdit()}
             onSelect={(id) => {
@@ -503,10 +600,10 @@ export default function App() {
             onChange={changeSession}
             onImport={() => void importFiles()}
             onRun={run}
-            onStop={() => {
-              setProgress(null);
-              notify("Demo stopped. Your brief and files are saved.");
-            }}
+            running={working ? runMode : null}
+            stage={stage}
+            connected={claudeReady}
+            onStop={stop}
             onMore={() => setSettings("Skills")}
             onNotice={notify}
             onTemplate={newEdit}
@@ -524,7 +621,9 @@ export default function App() {
             {kit.busy
               ? `MotionKit — ${kit.job?.message}`
               : working
-                ? `Demo — ${phases[Math.min(3, Math.floor(progress / 25))]}`
+                ? runMode === "edit"
+                  ? `Editing — ${stage}`
+                  : `Demo — ${phases[Math.min(3, Math.floor(progress / 25))]}`
                 : "Ready — local workspace"}
           </span>
           <span className="status-separator" />
@@ -609,7 +708,7 @@ export default function App() {
           </h2>
           <p>
             {working
-              ? "Stop the demo before adding more footage."
+              ? "Stop the edit before adding more footage."
               : "Drop your video, audio or images here."}
           </p>
         </div>

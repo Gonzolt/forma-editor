@@ -9,7 +9,14 @@ const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const artifacts = path.join(root, "test-results");
 await fs.mkdir(artifacts, { recursive: true });
 const userData = await fs.mkdtemp(path.join(os.tmpdir(), "forma-smoke-"));
-const env = { ...process.env, FORMA_TEST_DATA: userData };
+// Without Claude Code, Run edit falls back to the demo this test walks through.
+const claudeFixture = path.join(userData, "claude-fixture.json");
+await fs.writeFile(claudeFixture, JSON.stringify({ missing: true }));
+const env = {
+  ...process.env,
+  FORMA_TEST_DATA: userData,
+  FORMA_CLAUDE_FIXTURE: claudeFixture,
+};
 delete env.ELECTRON_RUN_AS_NODE;
 let app;
 const errors = [];

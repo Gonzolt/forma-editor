@@ -186,8 +186,8 @@ export function SettingsModal({
                   </strong>
                   <p>
                     {connection.hasKey
-                      ? "Stored securely. Execution adapter coming next."
-                      : "API-key storage is optional and separate from Claude Code sign-in."}
+                      ? "Stored securely. Edits run through Claude Code sign-in, not this key."
+                      : "Edits run through your Claude Code sign-in. API-key storage is optional."}
                   </p>
                 </div>
               </div>
@@ -240,8 +240,8 @@ export function SettingsModal({
                 </button>
               )}
               <label className="field-label" htmlFor="default-model">
-                Preferred model{" "}
-                <span className="field-hint">FOR FUTURE CONNECTION</span>
+                Model for edits{" "}
+                <span className="field-hint">VIA CLAUDE CODE</span>
               </label>
               <select
                 id="default-model"
@@ -257,7 +257,8 @@ export function SettingsModal({
                 <div>
                   <strong>Take it for a spin</strong>
                   <p>
-                    Explore a simulated edit and get an example plan.
+                    When Claude Code is not connected, Run edit shows a
+                    simulated plan instead.
                     <br />
                     No AI calls, charges, or video rendering.
                   </p>

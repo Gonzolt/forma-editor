@@ -89,7 +89,17 @@ function validateState(state) {
         !str(s.plan.summary, 2000) ||
         !Array.isArray(s.plan.steps) ||
         s.plan.steps.length > 20 ||
-        !s.plan.steps.every((x) => str(x, 2000)))
+        !s.plan.steps.every((x) => str(x, 2000)) ||
+        (s.plan.video !== undefined &&
+          (!s.plan.video ||
+            !str(s.plan.video.id, 100) ||
+            !str(s.plan.video.url, 1000) ||
+            !str(s.plan.video.name, 500) ||
+            ![
+              s.plan.video.width,
+              s.plan.video.height,
+              s.plan.video.duration,
+            ].every(Number.isFinite))))
     )
       fail();
   }

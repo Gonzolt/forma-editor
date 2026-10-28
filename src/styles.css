@@ -1054,6 +1054,11 @@ h1 em {
 .creative-stage:has(.plan-card) {
   padding-top: 25px;
   justify-content: flex-start;
+  /* Grow with the plan instead of spilling under the composer; the workspace scrolls. */
+  flex: 1 0 auto;
+}
+.creative-stage:has(.plan-card) .intro {
+  display: none;
 }
 .creative-stage:has(.plan-card) .hero {
   height: 115px;
@@ -1103,6 +1108,33 @@ h1 em {
   font-size: 11px;
   line-height: 1.8;
   padding-left: 17px;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+.plan-card:has(.plan-video) {
+  width: min(860px, 100%);
+}
+.plan-body {
+  display: flex;
+  gap: 22px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+.plan-video {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9px;
+  flex-shrink: 0;
+  max-width: 55%;
+}
+.plan-video video {
+  display: block;
+  max-height: 380px;
+  max-width: 100%;
+  border-radius: 8px;
+  background: #000;
 }
 .plan-note {
   font-size: 10px;
@@ -2007,6 +2039,12 @@ h1 em {
   }
 }
 @media (max-width: 760px) {
+  .plan-body {
+    flex-direction: column;
+  }
+  .plan-video {
+    max-width: 100%;
+  }
   html,
   body,
   #root {

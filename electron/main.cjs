@@ -16,6 +16,7 @@ const { pathToFileURL } = require("node:url");
 const { JsonStore, validateState } = require("./store.cjs");
 const { extensions, registerFiles } = require("./media.cjs");
 const { MotionKit } = require("./motionkit.cjs");
+const { EditEngine } = require("./edit-engine.cjs");
 const {
   ClaudeConnection,
   signInUrl,
@@ -56,6 +57,7 @@ let win,
   outputDirectory,
   allowClose = false;
 let motionKit;
+let editEngine;
 let updates;
 let claudeConnection;
 let quitRequested = false;
@@ -236,6 +238,35 @@ if (gotLock)
             win.webContents.send("claude:status", state);
         },
       });
+      editEngine = new EditEngine({
+        ffmpeg: motionKit.ffmpeg,
+        claude: claudeConnection,
+        resolve: async (id) => {
+          const filename = registry[id];
+          return filename &&
+            (await fs.stat(filename).catch(() => null))?.isFile()
+            ? filename
+            : null;
+        },
+        workRoot: path.join(app.getPath("temp"), "forma-edits"),
+        outputDirectory: () => outputDirectory,
+        registerOutput: async (filename) => (await importPaths([filename]))[0],
+        store,
+        onJob: (job) => {
+          if (win && !win.isDestroyed()) win.webContents.send("edit:job", job);
+        },
+      });
+      handle("edit:start", async (options) => {
+        try {
+          return await editEngine.start(options);
+        } catch (error) {
+          // IPC drops custom error fields, so the code travels in the message.
+          throw new Error(
+            error.code ? `[${error.code}] ${error.message}` : error.message,
+          );
+        }
+      });
+      handle("edit:cancel", () => editEngine.cancel());
       handle("claude:status", () => claudeConnection.check());
       handle("claude:login", () => claudeConnection.login());
       handle("claude:cancel", () => claudeConnection.cancelLogin());
@@ -332,6 +363,7 @@ if (gotLock)
         else if (action === "close") win.close();
       });
       handle("close:ready", async () => {
+        await editEngine.close();
         await claudeConnection.close();
         await updates.close();
         await motionKit.close();

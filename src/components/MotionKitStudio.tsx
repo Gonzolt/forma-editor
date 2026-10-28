@@ -608,7 +608,7 @@ export function SavedVideos({
         <h1>
           Your story, <em>ready to share.</em>
         </h1>
-        <p>Finished MotionKit exports, saved on this device.</p>
+        <p>Finished edits and MotionKit exports, saved on this device.</p>
         {videos.length ? (
           <div className="kit-export-grid">
             {videos.map((video) => (
@@ -660,7 +660,8 @@ export function SavedVideos({
             </div>
             <h2>Let’s make something move.</h2>
             <p>
-              Export a MotionKit film and your finished video will appear here.
+              Run an edit or export a MotionKit film, and your finished video
+              will appear here.
             </p>
             <button className="button primary" onClick={onMotionKit}>
               Open MotionKit

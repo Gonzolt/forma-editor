@@ -17,6 +17,9 @@ interface Props {
   session: EditSession;
   preferences: Preferences;
   progress: number | null;
+  running: "demo" | "edit" | null;
+  stage: string;
+  connected: boolean;
   onChange: (patch: Partial<EditSession>) => void;
   onImport: () => void;
   onRun: () => void;
@@ -29,6 +32,9 @@ export function Composer({
   session,
   preferences,
   progress,
+  running,
+  stage,
+  connected,
   onChange,
   onImport,
   onRun,
@@ -64,15 +70,23 @@ export function Composer({
         <div className="progress-block" role="status">
           <div className="progress-label eyebrow">
             <span>
-              DEMO STEP {Math.min(4, Math.floor(progress / 25) + 1)} / 4 —{" "}
-              {phases[Math.min(3, Math.floor(progress / 25))].toUpperCase()}
+              {running === "edit" ? (
+                stage.toUpperCase()
+              ) : (
+                <>
+                  DEMO STEP {Math.min(4, Math.floor(progress / 25) + 1)} / 4 —{" "}
+                  {phases[Math.min(3, Math.floor(progress / 25))].toUpperCase()}
+                </>
+              )}
             </span>
             <span>{Math.floor(progress)}%</span>
           </div>
           <div
             className="progress-track"
             role="progressbar"
-            aria-label="Demo edit progress"
+            aria-label={
+              running === "edit" ? "Edit progress" : "Demo edit progress"
+            }
             aria-valuenow={progress}
             aria-valuemin={0}
             aria-valuemax={100}
@@ -348,9 +362,11 @@ export function Composer({
         <span className="small-cross" aria-hidden="true">
           +
         </span>
-        {preferences.demoMode
-          ? "DEMO MODE · EDIT PLANS ONLY · NO VIDEO RENDERING"
-          : "YOUR FILES STAY ON YOUR DEVICE. YOUR STORY STAYS YOURS."}
+        {connected
+          ? "CLAUDE SEES STILL FRAMES AND YOUR BRIEF · YOUR VIDEO RENDERS ON THIS DEVICE"
+          : preferences.demoMode
+            ? "DEMO MODE · EDIT PLANS ONLY · NO VIDEO RENDERING"
+            : "YOUR FILES STAY ON YOUR DEVICE. YOUR STORY STAYS YOURS."}
       </div>
     </div>
   );

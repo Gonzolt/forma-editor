@@ -33,7 +33,8 @@ A Windows and macOS desktop foundation for an approachable, prompt-driven video 
 - Settings for Claude credentials, skills, export defaults, storage and shortcuts.
 - API-key storage encrypted with Electron `safeStorage`; keys never enter saved projects or the renderer after saving.
 - Claude Code account companion: native CLI discovery, browser sign-in, verified account status, cancellation, sign-out and a picker for custom installations. Credentials remain managed by Claude Code.
-- Explicit, cancelable **demo mode**, producing an example edit plan.
+- **Run edit** makes real videos: Claude Code plans the cut from still frames of your footage and Forma renders it with the bundled FFmpeg (see below).
+- A cancelable **demo mode** for when Claude Code is not connected, producing an example plan.
 - A real MotionKit studio with the three bundled example films, a live player, all 25 upstream editing guides, a project-folder picker and refresh after source edits.
 - Native H.264 MP4 exports at 360p/720p/1080p/4K and 24/30/60 fps, with a selectable time range, optional AAC soundtrack, actual frame progress and cancellation.
 - Finished exports in Saved videos, with playback, file reveal and recovery after restart.
@@ -42,9 +43,18 @@ A Windows and macOS desktop foundation for an approachable, prompt-driven video 
 
 ## What is intentionally pending
 
-MotionKit previews and exports are real. The main editor's **Run edit** remains a separate, explicitly simulated prompt workflow. It does not automatically rewrite MotionKit films, inspect your footage, transcribe audio, cut silences, add captions or generate music. File previews depend on Electron's supported codecs; importing a MOV or MKV does not guarantee its codec can be previewed.
+Run edit does not transcribe speech (so no automatic captions), add sound effects, interpolate frames, or apply glitch and RGB-split effects; Claude says so in the plan's notes when a brief asks for them. Clip timings come from still frames, so cuts can be off by about a frame interval. It does not rewrite MotionKit films. File previews depend on Electron's supported codecs; importing a MOV or MKV does not guarantee its codec can be previewed.
 
-Automatic Claude execution, voice dictation and a timeline editor are pending. Claude Code account sign-in is available as a companion connection; it does not enable the demo prompt editor to make AI calls. A saved API key is not a verified connection. MotionKit's guides are readable in the app, and their supporting scripts are included in the working project; they are not automatically installed or executed. No footage is uploaded.
+Voice dictation and a timeline editor are pending. A saved API key is not used for edits; Run edit uses your Claude Code sign-in. MotionKit's guides are readable in the app, and their supporting scripts are included in the working project; they are not automatically installed or executed. Video files are never uploaded: Claude receives your brief, file names, measurements and JPEG contact sheets of still frames.
+
+## How Run edit works
+
+1. **Look.** For each attached file Forma reads its duration, size and frame rate with FFmpeg and draws contact sheets of still frames (hardware-decoded where available). Music gets loudness levels, onset/beat times and a likely drop. With **Silence cut** on, speech pauses are measured.
+2. **Plan.** Forma runs your installed Claude Code in print mode (`claude -p`) with your brief, the measurements and read-only access to the contact sheets, and the model chosen under Settings → Claude. MCP servers, plugins, hooks and your Claude Code settings are not loaded, and only the Read and Glob tools are available. Claude returns a structured edit decision list.
+3. **Render.** Forma checks the plan against the real sources, then renders it with FFmpeg in one pass: clip trims in timeline order, fill or fit-with-blurred-background framing for the chosen aspect ratio, speed changes and freeze frames, zoom punches, camera shake, white flashes, motion blur, per-clip moods, one overall grade with optional vignette and grain, dip-to-black transitions, text overlays, and the chosen music mixed over the clips' own sound. Output is H.264/AAC MP4 at the chosen resolution, 60 fps when any source is 50 fps or more and 30 fps otherwise.
+4. **Finish.** The video is checked, saved to your output folder and added to **Saved videos**; the plan card shows it with Claude's steps and notes. **Stop** cancels at any stage and removes unfinished files.
+
+Runs use your Claude Code plan's usage.
 
 ## Sign in through Claude Code
 
@@ -53,7 +63,7 @@ Automatic Claude execution, voice dictation and a timeline editor are pending. C
 3. **Check status** reads `claude auth status --json`. Forma exposes only the account email, plan and authentication method. Credentials and refresh remain with Claude Code. A successful check describes the CLI's saved authentication status, not an end-to-end model request.
 4. **Cancel sign-in** stops a pending login without signing out an existing account. **Sign out of Claude Code** explicitly logs out the shared CLI account, including its terminal sessions.
 
-This companion uses your existing Claude Code installation and account configuration. It does not bundle Claude Code or reuse its OAuth tokens for API calls. Anthropic's [CLI reference](https://code.claude.com/docs/en/cli-reference) describes these commands. Automatic AI editing is a separate future integration, subject to Anthropic's supported authentication and permissions.
+This companion uses your existing Claude Code installation and account configuration. It does not bundle Claude Code or reuse its OAuth tokens for API calls. Anthropic's [CLI reference](https://code.claude.com/docs/en/cli-reference) describes these commands. Run edit starts the same installed CLI in print mode under your account; see "How Run edit works".
 
 ## MotionKit workflow
 
@@ -110,7 +120,8 @@ npm start
 1. Attach media with the spark button, paperclip, `Ctrl/⌘ O`, or a file drop.
 2. Click an attached file to preview it.
 3. Write a brief or choose a suggestion. Select skills and an output format.
-4. Choose **Run edit** (`Ctrl/⌘ Enter`). The first run switches on demo mode, which you can turn off again in Settings → Claude. Stop cancels the simulation. A completed demo creates an example plan and clearly states that no video was rendered.
+4. Sign in under Settings → Claude (see above), then choose **Run edit** (`Ctrl/⌘ Enter`). Progress shows each stage; **Stop** cancels. The finished video plays in the plan card and appears in Saved videos.
+5. Without a Claude Code sign-in, Run edit opens Settings → Claude. If **Enable demo** is on there, it runs the simulated demo instead, which creates an example plan and states that no video was rendered.
 
 ## Build desktop packages
 

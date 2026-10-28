@@ -3,12 +3,13 @@ import {
   ArrowRight,
   Check,
   Film,
+  FolderOpen,
   Plus,
   RotateCcw,
   Trash2,
 } from "lucide-react";
 import type { EditSession, MediaFile, Page, Preferences } from "../types";
-import { bytes, duration } from "../lib/bridge";
+import { bytes, desktop, duration } from "../lib/bridge";
 import { templates } from "../lib/skills";
 import { Composer } from "./Composer";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -17,6 +18,9 @@ interface Props {
   session: EditSession;
   preferences: Preferences;
   progress: number | null;
+  running: "demo" | "edit" | null;
+  stage: string;
+  connected: boolean;
   onChange: (p: Partial<EditSession>) => void;
   onImport: () => void;
   onRun: () => void;
@@ -28,7 +32,7 @@ interface Props {
   onDelete: () => void;
 }
 export function Workspace(props: Props) {
-  const { page, session, progress, onImport, onNotice } = props;
+  const { page, session, progress, running, stage, onImport, onNotice } = props;
   const [previewId, setPreviewId] = useState<string | null>(null);
   const closePreview = useCallback(() => setPreviewId(null), []);
   const preview = session.files.find((f) => f.id === previewId);
@@ -48,7 +52,9 @@ export function Workspace(props: Props) {
             </span>
             <span>
               {progress !== null
-                ? "DEMO PREVIEW"
+                ? running === "edit"
+                  ? `${stage.toUpperCase()} · ${Math.floor(progress)}%`
+                  : "DEMO PREVIEW"
                 : session.files.length
                   ? `${session.files.length} FILE${session.files.length === 1 ? "" : "S"} · ${duration(seconds)} · ${bytes(total)}`
                   : "NOTHING LOADED"}
@@ -113,7 +119,7 @@ export function Workspace(props: Props) {
               <div className="spark-target">
                 <div className="spark-label eyebrow">
                   {progress !== null
-                    ? `DEMO — ${Math.floor(progress)}%`
+                    ? `${running === "edit" ? "EDITING" : "DEMO"} — ${Math.floor(progress)}%`
                     : session.files.length
                       ? `${session.files.length} FILE${session.files.length === 1 ? "" : "S"} RECEIVED`
                       : "DROP FILES HERE"}
@@ -141,7 +147,9 @@ export function Workspace(props: Props) {
                   </span>
                   <div>
                     <span className="eyebrow">
-                      DEMO COMPLETE · NO VIDEO RENDERED
+                      {session.plan.video
+                        ? "EDIT COMPLETE · VIDEO RENDERED"
+                        : "DEMO COMPLETE · NO VIDEO RENDERED"}
                     </span>
                     <h2>{session.plan.title}</h2>
                   </div>
@@ -154,15 +162,50 @@ export function Workspace(props: Props) {
                   </button>
                 </div>
                 <p>{session.plan.summary}</p>
-                <ol>
-                  {session.plan.steps.map((s, i) => (
-                    <li key={i}>{s}</li>
-                  ))}
-                </ol>
-                <span className="plan-note">
-                  Your brief is saved. Real editing and exports will arrive with
-                  an execution engine.
-                </span>
+                <div className="plan-body">
+                  {session.plan.video && (
+                    <div className="plan-video">
+                      <video
+                        controls
+                        preload="metadata"
+                        src={session.plan.video.url}
+                        aria-label={`Play ${session.plan.video.name}`}
+                        style={{
+                          aspectRatio: `${session.plan.video.width} / ${session.plan.video.height}`,
+                        }}
+                        onError={() =>
+                          onNotice(
+                            "This video has moved or is no longer available.",
+                          )
+                        }
+                      />
+                      <button
+                        className="button"
+                        onClick={() =>
+                          void desktop?.motionKit
+                            .revealExport(session.plan!.video!.id)
+                            .catch(() =>
+                              onNotice("The video could not be located."),
+                            )
+                        }
+                      >
+                        <FolderOpen size={14} />
+                        Show in folder
+                      </button>
+                    </div>
+                  )}
+                  <ol>
+                    {session.plan.steps.map((s, i) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ol>
+                </div>
+                {!session.plan.video && (
+                  <span className="plan-note">
+                    This was the demo. Sign in to Claude Code under Settings →
+                    Claude to render real edits.
+                  </span>
+                )}
               </div>
             )}
           </div>

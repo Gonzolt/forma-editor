@@ -147,8 +147,8 @@ export function ClaudeAccount() {
         out here also signs out Claude Code.
       </p>
       <p className="field-help">
-        Sign-in is available now. Forma’s prompt editor is still a demo; signing
-        in does not enable automatic AI editing yet.
+        Run edit uses this account: Claude Code reads still frames from your
+        footage and plans the cut, then Forma renders the video on this device.
       </p>
       <button
         className="text-button claude-choose"

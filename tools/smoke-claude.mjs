@@ -84,9 +84,7 @@ try {
     timeout: 15000,
   });
   await expect(account).toContainText("editor@example.test · max plan");
-  await expect(account).toContainText(
-    "does not enable automatic AI editing yet",
-  );
+  await expect(account).toContainText("Run edit uses this account");
   assert.ok(
     !JSON.stringify(
       await page.evaluate(() => window.forma.claude.status()),
