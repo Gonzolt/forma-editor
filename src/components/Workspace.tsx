@@ -80,20 +80,26 @@ export function Workspace(props: Props) {
                     id="hero-paper-cutout"
                     colorInterpolationFilters="sRGB"
                   >
-                    {/* Separate warm skin tones from the near-neutral paper matte. */}
+                    {/* Extract only alpha, then trim paper-colored edge pixels. */}
                     <feColorMatrix
                       type="matrix"
-                      values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  40 0 -40 0 -2.2"
-                      result="cutout"
+                      values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  40 0 -40 0 -2.2"
+                      result="paper-mask"
+                    />
+                    <feMorphology
+                      in="paper-mask"
+                      operator="erode"
+                      radius="1.5"
+                      result="trimmed-mask"
                     />
                     <feGaussianBlur
-                      in="cutout"
-                      stdDeviation="0.35"
-                      result="softened"
+                      in="trimmed-mask"
+                      stdDeviation="0.25"
+                      result="softened-mask"
                     />
                     <feComposite
-                      in="softened"
-                      in2="SourceGraphic"
+                      in="SourceGraphic"
+                      in2="softened-mask"
                       operator="in"
                     />
                   </filter>
