@@ -248,9 +248,17 @@ test("the guided installer verifies size and checksum before running a fixed boo
 test("one connect action installs then opens CLI sign-in without choosing a location", async () => {
   let installed = false,
     loggedIn = false,
-    installCount = 0;
+    installCount = 0,
+    clearedLocation = false;
   const auth = new ClaudeConnection({
-    store: { read: async () => null },
+    store: {
+      read: async () => null,
+      write: async (key, value) => {
+        assert.equal(key, "claude-location");
+        assert.equal(value, null);
+        clearedLocation = true;
+      },
+    },
     locate: async () => (installed ? "/native/claude" : null),
     install: async ({ onProgress }) => {
       installCount++;
@@ -277,6 +285,7 @@ test("one connect action installs then opens CLI sign-in without choosing a loca
   await auth.connect(true);
   await auth.installTask;
   assert.equal(installCount, 2);
+  assert.equal(clearedLocation, true);
   assert.equal(auth.snapshot().state, "signed-in");
   assert.equal(auth.snapshot().signingIn, false);
 });

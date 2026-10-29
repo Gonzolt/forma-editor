@@ -629,7 +629,32 @@ class EditEngine {
       });
     return structuredClone(this.job);
   }
-  exec(active, args, { cwd, stdin, timeout = 600000, onStdout } = {}) {
+  async exec(active, args, options = {}) {
+    const softwareArgs = () =>
+      args.filter(
+        (value, index) =>
+          value !== "-hwaccel" && args[index - 1] !== "-hwaccel",
+      );
+    const accelerated = args[0] === this.ffmpeg && args.includes("-hwaccel");
+    const result = await this.execOnce(
+      active,
+      accelerated && active.softwareOnly ? softwareArgs() : args,
+      options,
+    );
+    if (
+      accelerated &&
+      !active.softwareOnly &&
+      result.code !== 0 &&
+      !active.cancelled
+    ) {
+      // Some PCs have no usable D3D11/VideoToolbox decoder. Retry the same local
+      // operation on the CPU, then keep this edit on that path.
+      active.softwareOnly = true;
+      return this.execOnce(active, softwareArgs(), options);
+    }
+    return result;
+  }
+  execOnce(active, args, { cwd, stdin, timeout = 600000, onStdout } = {}) {
     if (active.cancelled) return Promise.reject(cancelled());
     return new Promise((resolve, reject) => {
       const [file, ...rest] = args;

@@ -299,7 +299,7 @@ class ClaudeConnection {
     if (this.installTask || this.loginTask) return this.snapshot();
     if (!repair && this.state.executable && this.state.state !== "error")
       return this.login();
-    if (this.state.state === "error")
+    if (repair || this.state.state === "error")
       await this.store.write("claude-location", null);
     const controller = (this.installController = new AbortController());
     this.state.installing = true;

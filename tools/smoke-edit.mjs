@@ -50,6 +50,7 @@ try {
   const store = new JsonStore(directory);
   engine = new EditEngine({
     ffmpeg,
+    platform: "win32",
     claude: {
       env: {},
       check: async () => ({ state: "signed-in", executable: process.execPath }),
@@ -67,6 +68,19 @@ try {
     },
   });
   const original = engine.exec.bind(engine);
+  const native = engine.execOnce.bind(engine);
+  let hardwareFailures = 0;
+  engine.execOnce = async (active, args, options) => {
+    if (args.includes("-hwaccel")) {
+      hardwareFailures++;
+      return {
+        code: 1,
+        stdout: "",
+        stderr: "Test device has no hardware decoder.",
+      };
+    }
+    return native(active, args, options);
+  };
   let plannerCalls = 0,
     decodes = 0,
     rejectDecode = false,
@@ -134,6 +148,7 @@ try {
   assert.equal(records[0].width, 720);
   assert.equal(records[0].height, 1280);
   assert.equal(decodes, 1);
+  assert.equal(hardwareFailures, 1);
   assert.ok((await fs.stat(records[0].path)).size > 1000);
   stopAtRender = true;
   await engine.start({ ...options, sessionId: "cancel-session" });

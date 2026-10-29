@@ -21,6 +21,8 @@ This review covered Claude connection/setup, the Electron IPC boundary, MotionKi
 
 ## Verification
 
+Platform checks also exposed an unavailable Windows hardware decoder. Editing now retries on the CPU and keeps that edit on the software path. The real-render test deliberately simulates an unavailable decoder to verify recovery.
+
 Packaged-app checks caught an omitted upstream placeholder that prevented strict project migration from starting. The package hook now restores missing tracked resources and verifies the full MotionKit manifest before producing an installer.
 
 - Production dependency audit: no reported npm production advisories at review time; this does not audit FFmpeg/Chromium independently.
