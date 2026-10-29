@@ -27,7 +27,7 @@ A Windows and macOS desktop foundation for an approachable, prompt-driven video 
 - A sliding sidebar: click the edge arrow, use Enter/Space, or drag it inward/outward. Its position is remembered between launches.
 - Native file selection and whole-window file drop for video, audio and images.
 - File metadata, duration when the codec supports it, source previews and removing attachments.
-- Prompt composer, suggestions, `/` skill picker and `@` file mentions.
+- Prompt composer that widens for longer briefs and grows with wrapped text, with bounded scrolling, suggestions, `/` skill picker and `@` file mentions.
 - Configurable skill registry, output aspect, target length and resolution.
 - Templates, recent edit search, automatic local session/draft saving and restart recovery.
 - Settings for Claude credentials, skills, export defaults, storage and shortcuts.

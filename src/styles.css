@@ -635,6 +635,10 @@ h1 em {
   flex-shrink: 0;
   padding-top: 9px;
   z-index: 3;
+  transition: max-width 180ms ease;
+}
+.composer-wrap.is-expanded {
+  max-width: 960px;
 }
 .suggestions {
   display: flex;
@@ -674,15 +678,19 @@ h1 em {
 .prompt-area textarea {
   background: transparent;
   border: 0;
-  resize: vertical;
-  min-height: 48px;
-  max-height: 160px;
+  field-sizing: content;
+  resize: none;
+  min-height: 51px;
+  max-height: clamp(102px, 28vh, 240px);
+  overflow-y: auto;
+  overflow-wrap: anywhere;
   width: 100%;
   padding: 0;
   line-height: 1.5;
   font-size: 17px;
   display: block;
   scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
 }
 .prompt-area textarea::placeholder {
   color: #827d73;

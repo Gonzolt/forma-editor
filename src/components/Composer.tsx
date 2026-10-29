@@ -46,6 +46,7 @@ export function Composer({
   const textarea = useRef<HTMLTextAreaElement>(null);
   const [picker, setPicker] = useState<"skills" | "files" | null>(null);
   const working = progress !== null;
+  const expanded = session.prompt.length > 160 || session.prompt.includes("\n");
   const selected = session.skills;
   const toggle = (id: string) =>
     onChange({
@@ -65,7 +66,7 @@ export function Composer({
     textarea.current?.focus();
   };
   return (
-    <div className="composer-wrap">
+    <div className={`composer-wrap${expanded ? " is-expanded" : ""}`}>
       {working ? (
         <div className="progress-block" role="status">
           <div className="progress-label eyebrow">
