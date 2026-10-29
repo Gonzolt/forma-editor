@@ -2,6 +2,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { randomUUID } = require("node:crypto");
+const semver = require("semver");
 
 // Claude Code plans the edit from still frames and measurements; FFmpeg renders it locally.
 const SHEET_COLUMNS = 4;
@@ -590,7 +591,12 @@ class EditEngine {
         "The bundled FFmpeg encoder is missing. Reinstall Forma.",
       );
     const claude = await this.claude.check();
-    if (claude.state !== "signed-in" || !claude.executable) {
+    if (
+      claude.state !== "signed-in" ||
+      !claude.executable ||
+      claude.signingIn ||
+      claude.installing
+    ) {
       const error = new Error(
         claude.state === "missing"
           ? "Install Claude Code, then sign in under Settings → Claude to run edits."
@@ -636,7 +642,11 @@ class EditEngine {
       active.process = child;
       let stdout = "",
         stderr = "";
-      const timer = setTimeout(() => child.kill(), timeout);
+      let timedOut = false;
+      const timer = setTimeout(() => {
+        timedOut = true;
+        child.kill();
+      }, timeout);
       child.stdout.on("data", (d) => {
         stdout = (stdout + d).slice(-2000000);
         onStdout?.(String(d));
@@ -652,6 +662,14 @@ class EditEngine {
         clearTimeout(timer);
         if (active.process === child) active.process = null;
         if (active.cancelled) reject(cancelled());
+        else if (timedOut)
+          reject(
+            new Error(
+              file === this.ffmpeg
+                ? "Video processing took too long. Try a shorter edit or lower resolution."
+                : "Claude did not respond in time. Check the connection and try again.",
+            ),
+          );
         else resolve({ code, stdout, stderr });
       });
       if (stdin !== undefined) {
@@ -665,6 +683,15 @@ class EditEngine {
     let partial;
     try {
       await fs.mkdir(work, { recursive: true });
+      const version = await this.exec(active, [claudeExe, "--version"], {
+        cwd: work,
+        timeout: 15000,
+      });
+      const installed = semver.coerce(version.stdout);
+      if (version.code !== 0 || !installed || semver.lt(installed, "2.1.257"))
+        throw new Error(
+          "Update Claude Code to 2.1.257 or later before editing. Forma needs its restricted file-reading support. Open Claude connection options to repair the installation.",
+        );
       const sources = [];
       let videos = 0,
         audios = 0;
@@ -810,13 +837,20 @@ class EditEngine {
             "--tools",
             "Read,Glob",
             "--allowedTools",
-            "Read,Glob",
+            "Read(./**)",
             "--permission-mode",
             "dontAsk",
             "--strict-mcp-config",
             "--disable-slash-commands",
             "--setting-sources",
             "",
+            "--settings",
+            JSON.stringify({
+              permissions: { blockReadsOutsideWorkingDirectories: true },
+              disableAllHooks: true,
+              disableClaudeAiConnectors: true,
+              autoMemoryEnabled: false,
+            }),
             "--no-session-persistence",
             "--json-schema",
             JSON.stringify(PLAN_SCHEMA),
@@ -831,6 +865,10 @@ class EditEngine {
         clearInterval(ticker);
       }
       let reply;
+      if (answer.code !== 0)
+        throw new Error(
+          "Claude could not finish planning this edit. Check your connection and usage limits, then try again.",
+        );
       try {
         reply = JSON.parse(answer.stdout.trim().split(/\r?\n/).pop());
       } catch {
@@ -926,6 +964,29 @@ class EditEngine {
       const size = (await fs.stat(partial)).size;
       if (!check.duration || size < 1000)
         throw new Error("The render produced an empty video.");
+      const decode = await this.exec(
+        active,
+        [
+          this.ffmpeg,
+          "-v",
+          "error",
+          "-xerror",
+          "-i",
+          partial,
+          "-map",
+          "0:v:0",
+          "-map",
+          "0:a?",
+          "-f",
+          "null",
+          "-",
+        ],
+        { timeout: 120000 },
+      );
+      if (decode.code !== 0)
+        throw new Error(
+          "The finished video could not be decoded. No unfinished video was added to your library.",
+        );
       await fs.rename(partial, output);
       partial = null;
       const media = await this.registerOutput(output);

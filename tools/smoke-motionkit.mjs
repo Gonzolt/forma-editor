@@ -49,7 +49,7 @@ try {
     page.getByRole("button", { name: "Export MP4", exact: true }),
   ).toBeEnabled({ timeout: 30000 });
   const status = await page.evaluate(() => window.forma.motionKit.status());
-  assert.equal(status.films.length, 3);
+  assert.equal(status.films.length, 4);
   assert.ok(status.guides.some((guide) => guide.id === "i-hate-editing"));
   assert.ok(status.encoderReady);
   for (const film of status.films) {

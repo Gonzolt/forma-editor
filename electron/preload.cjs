@@ -2,6 +2,9 @@ const { contextBridge, ipcRenderer, webUtils } = require("electron");
 const invoke = (channel, ...args) => ipcRenderer.invoke(channel, ...args);
 contextBridge.exposeInMainWorld("forma", {
   claude: {
+    connect: () => invoke("claude:connect"),
+    repair: () => invoke("claude:repair"),
+    discover: () => invoke("claude:discover"),
     status: () => invoke("claude:status"),
     login: () => invoke("claude:login"),
     cancel: () => invoke("claude:cancel"),
@@ -26,11 +29,17 @@ contextBridge.exposeInMainWorld("forma", {
   },
   motionKit: {
     status: () => invoke("motionkit:status"),
-    preview: (id) => invoke("motionkit:preview", id),
+    preview: (id, variant) => invoke("motionkit:preview", id, variant),
+    carousel: (id, index) => invoke("motionkit:carousel", id, index),
+    exportCarousel: (id) => invoke("motionkit:carousel-export", id),
+    posts: (id) => invoke("motionkit:posts", id),
+    copyPost: (id, index) => invoke("motionkit:copy-post", id, index),
+    revealCarousel: (id) => invoke("motionkit:reveal-carousel", id),
     export: (options) => invoke("motionkit:export", options),
     cancel: () => invoke("motionkit:cancel"),
     exports: () => invoke("motionkit:exports"),
     chooseProject: () => invoke("motionkit:choose"),
+    useBundled: () => invoke("motionkit:use-bundled"),
     openProject: () => invoke("motionkit:open-project"),
     revealExport: (id) => invoke("motionkit:reveal", id),
     onJob: (callback) => {

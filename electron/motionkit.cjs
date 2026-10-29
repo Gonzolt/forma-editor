@@ -4,8 +4,9 @@ const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { once } = require("node:events");
 const { randomUUID } = require("node:crypto");
+const { prepareWorkspace, revisions } = require("./motionkit-workspace.cjs");
+const social = require("./motionkit-social.cjs");
 const {
-  inside,
   validateProject,
   listFilms,
   listGuides,
@@ -81,33 +82,20 @@ class MotionKit {
     return this.initializing;
   }
   async initialize() {
-    const saved = await this.store.read("motionkit");
-    const managed = path.join(this.userData, "motionkit");
-    if (!saved?.root && !(await fs.stat(managed).catch(() => null))) {
-      const temporary = path.join(
-        this.userData,
-        `motionkit-seeding-${randomUUID()}`,
-      );
-      if (!inside(this.userData, temporary))
-        throw new Error("Invalid project directory.");
-      try {
-        await fs.cp(this.bundledRoot, temporary, { recursive: true });
-        await validateProject(temporary);
-        await fs.rename(temporary, managed);
-      } finally {
-        await fs
-          .rm(temporary, { recursive: true, force: true })
-          .catch(() => {});
-      }
-    }
-    this.root = await validateProject(saved?.root || managed);
+    this.workspace = await prepareWorkspace(this);
+    this.root = this.workspace.root;
   }
   async status() {
     await this.ensure();
     return {
       root: this.root,
       source: "https://github.com/Gonzolt/motionkit",
-      revision: "4c8d08e78f8132a4525b4df2c34ef2b41110d66b",
+      revision: this.workspace?.revision || null,
+      bundledRevision: revisions.current,
+      conflicts: this.workspace?.conflicts || [],
+      previousRoot: this.workspace?.previousRoot || null,
+      managed: !!this.workspace?.managed,
+      campaigns: await social.campaigns(this.root, await listFilms(this.root)),
       films: await listFilms(this.root),
       guides: await listGuides(this.root),
       encoderReady:
@@ -120,7 +108,22 @@ class MotionKit {
     if (this.active)
       throw new Error("Stop the current export before changing projects.");
     this.root = await validateProject(root);
-    await this.store.write("motionkit", { root: this.root });
+    this.workspace = {
+      root: this.root,
+      revision: null,
+      managed: false,
+      conflicts: [],
+    };
+    await this.store.write("motionkit", this.workspace);
+    this.initializing = Promise.resolve();
+    for (const window of this.windows)
+      if (!window.isDestroyed()) window.destroy();
+    return this.status();
+  }
+  async useBundled() {
+    if (this.active) throw new Error("Stop the current export first.");
+    this.workspace = await prepareWorkspace({ ...this, fresh: true });
+    this.root = this.workspace.root;
     this.initializing = Promise.resolve();
     for (const window of this.windows)
       if (!window.isDestroyed()) window.destroy();
@@ -172,7 +175,9 @@ class MotionKit {
     window.webContents.on("console-message", (details) => {
       if (details.level === "error") errors.push(details.message);
     });
-    await deadline(window.loadURL(film.url + "?export"));
+    const source = new URL(film.url);
+    source.searchParams.set("export", "");
+    await deadline(window.loadURL(source.href));
     for (let i = 0; i < 150; i++) {
       if (window.isDestroyed()) throw cancelled();
       if (
@@ -210,8 +215,8 @@ class MotionKit {
       throw new Error("The film has an unsupported duration or frame size.");
     return meta;
   }
-  async preview(id) {
-    const film = await this.film(id);
+  async preview(id, variant) {
+    const film = await social.variantFilm(this, await this.film(id), variant);
     const window = this.window();
     try {
       return { ...film, ...(await this.loadFilm(window, film)) };
@@ -238,10 +243,16 @@ class MotionKit {
       !Number.isFinite(options.to) ||
       options.from < 0 ||
       options.to <= options.from ||
-      (options.audioId !== undefined && typeof options.audioId !== "string")
+      (options.audioId !== undefined && typeof options.audioId !== "string") ||
+      (options.crop !== undefined &&
+        !["vertical", "feed", "square"].includes(options.crop))
     )
       throw new Error("Invalid export settings.");
-    await this.film(options.filmId);
+    await social.variantFilm(
+      this,
+      await this.film(options.filmId),
+      options.variant,
+    );
     if (this.active) throw new Error("One export is already running.");
     const active = {
       cancelled: false,
@@ -283,7 +294,11 @@ class MotionKit {
         throw new Error(
           "The bundled FFmpeg encoder is missing. Reinstall Forma or run npm ci from source.",
         );
-      const film = await this.film(options.filmId);
+      const film = await social.variantFilm(
+        this,
+        await this.film(options.filmId),
+        options.variant,
+      );
       if (active.cancelled) throw cancelled();
       active.window = this.window();
       const meta = await this.loadFilm(active.window, film);
@@ -296,6 +311,7 @@ class MotionKit {
       const scale = shortEdge / Math.min(meta.width, meta.height);
       const width = Math.max(2, Math.round((meta.width * scale) / 2) * 2);
       const height = Math.max(2, Math.round((meta.height * scale) / 2) * 2);
+      const crop = social.exportCrop(width, height, options.crop);
       if (Math.max(width, height) > 7680)
         throw new Error(
           "Choose a smaller resolution for this film's aspect ratio.",
@@ -369,7 +385,7 @@ class MotionKit {
         "-crf",
         "18",
         "-vf",
-        "scale=in_range=full:out_range=limited,format=yuv420p",
+        `${crop.filter}scale=in_range=full:out_range=limited,format=yuv420p`,
         "-r",
         String(options.fps),
         "-colorspace",
@@ -469,17 +485,18 @@ class MotionKit {
       const media = await this.registerOutput(output);
       const record = {
         id: media.id,
-        title: film.name,
+        title: film.variant ? `${film.name} · ${film.variant}` : film.name,
         filmId: film.id,
         name,
         path: output,
         size,
         duration: total / options.fps,
-        width,
-        height,
+        width: crop.width,
+        height: crop.height,
         fps: options.fps,
         createdAt: Date.now(),
         hasAudio: !!audio,
+        ...(film.variant ? { variant: film.variant } : {}),
       };
       const records = await this.store.read("exports", []);
       await this.store.write("exports", [record, ...records].slice(0, 500));
@@ -554,6 +571,150 @@ class MotionKit {
     active.process?.kill();
     if (active.window && !active.window.isDestroyed()) active.window.destroy();
     await active.completion;
+  }
+  async carousel(id, index) {
+    return social.carouselInfo(this, id, index);
+  }
+  async posts(id) {
+    return social.copyPosts(this, id);
+  }
+  async startCarousel(id) {
+    if (this.active) throw new Error("One export is already running.");
+    const info = await this.carousel(id, 0);
+    if (this.active) throw new Error("One export is already running.");
+    const active = { cancelled: false, window: null, completion: null };
+    this.active = active;
+    this.job = {
+      id: randomUUID(),
+      filmId: `carousel/${id}`,
+      status: "preparing",
+      progress: 0,
+      frame: 0,
+      total: info.count,
+      message: "Preparing carousel slides",
+      revision: 0,
+    };
+    this.emit({});
+    active.completion = this.renderCarousel(active, id, info)
+      .catch((error) =>
+        this.emit({
+          status: active.cancelled ? "cancelled" : "failed",
+          message: active.cancelled
+            ? "Carousel export stopped. Unfinished slides were removed."
+            : error.message,
+        }),
+      )
+      .finally(() => {
+        if (this.active === active) this.active = null;
+      });
+    return this.job;
+  }
+  async renderCarousel(active, campaign, info) {
+    const directory = this.outputDirectory();
+    await fs.mkdir(directory, { recursive: true });
+    const temporary = path.join(directory, `.carousel-${this.job.id}`);
+    let unfinished = null;
+    try {
+      await fs.mkdir(temporary);
+      unfinished = temporary;
+      if (active.cancelled) throw cancelled();
+      active.window = this.window();
+      await deadline(active.window.loadURL(info.url));
+      active.window.webContents.debugger.attach("1.3");
+      const debug = active.window.webContents.debugger;
+      await deadline(debug.sendCommand("Page.enable"));
+      await deadline(
+        debug.sendCommand("Emulation.setDeviceMetricsOverride", {
+          width: info.width,
+          height: info.height,
+          deviceScaleFactor: 1,
+          mobile: false,
+        }),
+      );
+      for (let i = 0; i < info.count; i++) {
+        if (active.cancelled) throw cancelled();
+        const slide = await this.carousel(campaign, i);
+        if (i > 0) await deadline(active.window.loadURL(slide.url));
+        for (let attempt = 0; attempt < 150; attempt++) {
+          if (active.cancelled || active.window.isDestroyed())
+            throw cancelled();
+          if (
+            await deadline(
+              active.window.webContents.executeJavaScript(
+                "typeof window.READY !== 'undefined'",
+              ),
+              5000,
+            )
+          )
+            break;
+          if (attempt === 149)
+            throw new Error(
+              "The carousel did not initialize. Check its deck and brand files.",
+            );
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        const meta = await deadline(
+          active.window.webContents.executeJavaScript(
+            "Promise.resolve(window.READY).then(v=>{if(!v)throw Error('Slide did not initialize');return v})",
+          ),
+        );
+        if (
+          meta.W !== info.width ||
+          meta.H !== info.height ||
+          meta.n !== info.count
+        )
+          throw new Error(
+            "The carousel changed during export. Refresh and try again.",
+          );
+        if (active.cancelled) throw cancelled();
+        const shot = await deadline(
+          debug.sendCommand("Page.captureScreenshot", {
+            format: "png",
+            fromSurface: true,
+            captureBeyondViewport: false,
+          }),
+        );
+        await fs.writeFile(
+          path.join(temporary, `${String(i + 1).padStart(2, "0")}.png`),
+          Buffer.from(shot.data, "base64"),
+        );
+        this.emit({
+          status: "rendering",
+          progress: Math.round(((i + 1) / info.count) * 98),
+          frame: i + 1,
+          message: `Saving slide ${i + 1} of ${info.count}`,
+        });
+      }
+      if (active.cancelled) throw cancelled();
+      const name = `${campaign}-carousel-${this.job.id.slice(0, 8)}`;
+      const output = path.join(directory, name);
+      await fs.rename(temporary, output);
+      unfinished = null;
+      const record = {
+        id: this.job.id,
+        directory: output,
+        count: info.count,
+        createdAt: Date.now(),
+      };
+      const exports = await this.store.read("carousel-exports", []);
+      await this.store.write(
+        "carousel-exports",
+        [record, ...exports].slice(0, 100),
+      );
+      this.emit({
+        status: "completed",
+        progress: 100,
+        message: `${info.count} PNG slides are ready`,
+        carouselResult: { id: this.job.id, name, count: info.count },
+      });
+    } finally {
+      if (active.window && !active.window.isDestroyed())
+        active.window.destroy();
+      if (unfinished && path.dirname(unfinished) === path.resolve(directory))
+        await fs
+          .rm(unfinished, { recursive: true, force: true })
+          .catch(() => {});
+    }
   }
   async close() {
     await this.cancel();

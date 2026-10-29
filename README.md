@@ -32,10 +32,12 @@ A Windows and macOS desktop foundation for an approachable, prompt-driven video 
 - Templates, recent edit search, automatic local session/draft saving and restart recovery.
 - Settings for Claude credentials, skills, export defaults, storage and shortcuts.
 - API-key storage encrypted with Electron `safeStorage`; keys never enter saved projects or the renderer after saving.
-- Claude Code account companion: native CLI discovery, browser sign-in, verified account status, cancellation, sign-out and a picker for custom installations. Credentials remain managed by Claude Code.
+- Guided Claude connection: automatic discovery, checksum-verified installation when needed, browser sign-in, connection refresh and cancellation. No executable or credential file picker is required. Credentials remain managed by Claude Code.
 - **Run edit** makes real videos: Claude Code plans the cut from still frames of your footage and Forma renders it with the bundled FFmpeg (see below).
 - A cancelable **demo mode** for when Claude Code is not connected, producing an example plan.
-- A real MotionKit studio with the three bundled example films, a live player, all 25 upstream editing guides, a project-folder picker and refresh after source edits.
+- A real MotionKit studio with four bundled films, a live player, all 29 upstream editing guides, a project-folder picker and refresh after source edits.
+- MotionKit Social studio: choose hook/message/CTA combinations, preview and export a selected promo as 9:16, 4:5 or 1:1 MP4, export carousel slides as full-resolution PNGs, and review/copy campaign posts with the upstream platform/brand checks.
+- Safe bundled-workspace upgrades in a new copy, preserving user edits, conflicts and the previous project. External projects stay untouched; **Use included MotionKit** opens a fresh bundled project.
 - Native H.264 MP4 exports at 360p/720p/1080p/4K and 24/30/60 fps, with a selectable time range, optional AAC soundtrack, actual frame progress and cancellation.
 - Finished exports in Saved videos, with playback, file reveal and recovery after restart.
 - Automatic launch checks for stable Forma releases and the latest MotionKit commit on their public GitHub repositories, with an update indicator and Settings → Updates.
@@ -58,10 +60,10 @@ Runs use your Claude Code plan's usage.
 
 ## Sign in through Claude Code
 
-1. Open **Settings → Claude**. Forma looks for your native Claude Code installation in its usual location and on PATH. If it is missing, **Get Claude Code** opens Anthropic's installation instructions. **Choose Claude Code location** supports a custom installation.
-2. If Claude Code already has a saved account, Forma displays its sign-in status. Otherwise choose **Sign in with Claude Code** and finish Anthropic's browser flow. Forma runs the installed CLI's `claude auth login --claudeai`; it does not implement its own OAuth client or collect tokens.
-3. **Check status** reads `claude auth status --json`. Forma exposes only the account email, plan and authentication method. Credentials and refresh remain with Claude Code. A successful check describes the CLI's saved authentication status, not an end-to-end model request.
-4. **Cancel sign-in** stops a pending login without signing out an existing account. **Sign out of Claude Code** explicitly logs out the shared CLI account, including its terminal sessions.
+1. Open **Settings → Claude**. Forma finds an existing installation and signed-in account automatically, including standard native, Homebrew and WinGet locations. Stale saved paths no longer hide a working installation.
+2. Choose **Connect Claude** or **Install & connect Claude**. If installation is needed, Forma downloads the native bootstrap binary from Anthropic's fixed official release endpoint, verifies its exact size and SHA256 against the release manifest, and runs the official `install stable` bootstrap command. Then finish the browser sign-in. No shell commands or location files are required. **Repair & connect Claude** can restore a broken installation.
+3. **Check connection** reads `claude auth status --json`. Forma exposes only the account email, plan and authentication method. Credentials and refresh remain with Claude Code. A successful check describes the CLI's saved authentication status, not an end-to-end model request. Editing requires Claude Code 2.1.257 or later for restricted file reads; **Connection options → Update or repair Claude Code** updates an existing installation while retaining its account.
+4. **Cancel connection** stops a pending installation or sign-in without signing out an existing account. **Connection options** contains automatic rediscovery, the setup guide, account switching and explicit shared-account sign-out. API-key storage is optional and lives under a separate advanced disclosure; Run edit does not use that key.
 
 This companion uses your existing Claude Code installation and account configuration. It does not bundle Claude Code or reuse its OAuth tokens for API calls. Anthropic's [CLI reference](https://code.claude.com/docs/en/cli-reference) describes these commands. Run edit starts the same installed CLI in print mode under your account; see "How Run edit works".
 
@@ -76,6 +78,10 @@ This companion uses your existing Claude Code installation and account configura
 
 Forma uses Electron's bundled Chromium and a bundled FFmpeg executable for this path. It needs no system Node, Chrome, Python, FFmpeg or WSL when installed. Advanced upstream Python, voice, transcription and third-party workflows still have their own dependencies and are not part of the native film export path. External network assets are blocked in the sandboxed film renderer; keep a film's assets inside its project.
 
+Choose **MotionKit → Social studio** to use the new campaign layer. The included launch brief has three hooks, two messages and two CTAs (12 combinations); each selected combination is actually passed to the film's `?v=` parameter for preview and export. Feed and square exports crop the rendered frames; preview crop guides are omitted from exports. **Carousel slides** previews any slide and exports all six as 1080×1350 PNGs. **Post copy** uses the reviewed bundled `checkPost()` helper on campaign data, never JavaScript from a chosen project; copying is local and nothing is posted to a social account.
+
+Campaign content remains project-authored JSON/HTML. Bulk variant matrices, campaign authoring through an agent, Python voice/transcription and external account publishing are not exposed as native UI workflows. The supporting upstream sources and four new skill guides are included.
+
 The native adapter also fixes the stage's grid sizing in served HTML, so the authored canvas stays centered in small previews and lower-resolution exports. It does not change the user's source files.
 
 ## Startup update checks
@@ -89,7 +95,7 @@ Every application launch, including reopening the window on macOS, starts a back
 
 Results appear in **Settings → Updates**, with a title-bar indicator and one notification when a different version is found. **Check for updates** retries both checks. Cached ETags reduce repeated transfers; a 12-second network deadline, offline handling and rate-limit messages keep the editor available. Requests use public GitHub metadata; footage and credentials stay local.
 
-Checks are read-only. Install the downloaded Forma release when ready. For MotionKit, review upstream changes and choose an updated project folder in the studio; working films are not overwritten automatically. The app checks sources and reports available versions, rather than silently installing code at startup.
+GitHub checks are read-only. Install the downloaded Forma release when ready. A new Forma version upgrades its managed MotionKit project using the included snapshot, preserving local edits and retaining the original folder. To use newer upstream code before an app release, review it and choose an updated external project in the studio. The update checker never downloads or executes repository code automatically.
 
 ## Publishing the next app version
 
@@ -147,6 +153,8 @@ npm run test:desktop
 npm run test:motionkit
 npm run test:updates
 npm run test:claude
+npm run test:social
+npm run test:edit
 ```
 
 Unit tests cover persistence, import registration, IPC state validation, the pinned MotionKit films/guides and project asset boundaries. Desktop smoke tests use isolated temporary profiles. They check the original editor and appearance controls, and additionally render actual MotionKit frames, reject empty black frames, decode the resulting H.264 MP4, test AAC soundtrack muxing, cancel an active render, play a finished export and restore the library after restart. Screenshots and a short rendered test film are saved in `test-results/`. No real credentials or AI calls are used.
@@ -156,13 +164,17 @@ Unit tests cover persistence, import registration, IPC state validation, the pin
 - `src/components/`: TitleBar, Sidebar, Workspace/Hero, Composer, SettingsModal.
 - `src/theme.css`: colors and font tokens. All fonts ship locally.
 - `src/lib/skills.ts`: declarative skill and template registries.
-- `src/lib/engine.ts`: isolated demo adapter; replace with the real planning/rendering service.
+- `src/lib/engine.ts`: isolated offline demo adapter; real editing uses `electron/edit-engine.cjs`.
 - `src/lib/bridge.ts` and `src/types.ts`: typed UI/desktop boundary and browser fallback.
 - `electron/main.cjs`: native services and validated IPC handlers.
 - `electron/preload.cjs`: narrow, context-isolated bridge. No arbitrary filesystem, shell or IPC access is exposed.
 - `electron/media.cjs`: supported imports and stable file registration.
 - `electron/store.cjs`: bounded state validation and serialized atomic writes.
 - `electron/motionkit.cjs`: sandboxed offscreen Chromium frame rendering, FFmpeg jobs, cancellation and verified export history.
+- `electron/motionkit-workspace.cjs` and `motionkit-revisions.json`: version-aware, edit-preserving project upgrades and canonical upstream file manifests.
+- `electron/motionkit-social.cjs`: bounded campaign loading, validated variants, carousel metadata, trusted copy checks and feed crops.
+- `electron/claude-connection.cjs` and `claude-install.cjs`: automatic discovery, guided native installation, browser sign-in and account metadata.
+- `electron/job-gate.cjs`: shared preflight reservation and cross-engine render exclusivity.
 - `electron/kit-project.cjs`: project discovery, skill loading and constrained local asset serving.
 - `electron/updates.cjs`: public GitHub release/commit checks, ETag cache, version comparison and Git revision reading.
 - `vendor/motionkit/` and `vendor/UPSTREAM.md`: pinned original upstream source and provenance.
@@ -170,11 +182,11 @@ Unit tests cover persistence, import registration, IPC state validation, the pin
 - `.github/workflows/desktop.yml`: per-platform test and package jobs.
 - `.github/workflows/release.yml` and `tools/release-assets.cjs`: stable tag validation and public release installers.
 
-Local data uses Electron's per-user app data directory (`%APPDATA%/forma-editor` on Windows; `~/Library/Application Support/forma-editor` on macOS). Projects, registered source paths, output preferences, verified export history and encrypted credentials are separate files. The initial working MotionKit snapshot lives in the `motionkit/` subfolder; selecting an existing project stores its location instead. Source media stays where you imported it. Missing media is marked for reimport. Exports default to the operating system's video folder under Forma. No GPU capability is inferred or advertised.
+Local data uses Electron's per-user app data directory (`%APPDATA%/forma-editor` on Windows; `~/Library/Application Support/forma-editor` on macOS). Projects, source paths, output preferences, verified export history and encrypted credentials are separate files. Bundled MotionKit workspaces live in versioned `motionkit-projects/` folders. An upgrade copies the current managed workspace, applies upstream changes only to unmodified files, preserves local edits and reports conflicts; the original project is kept. Older `motionkit/` workspaces migrate automatically. Selecting an external project stores its location without changing its source. Source media stays where it was imported. Missing media is marked for reimport. Video and carousel exports default to the operating system's video folder under Forma.
 
 ## Next integration boundary
 
-Connect an editing agent to the existing MotionKit working project and guides, keeping provider secrets in the main process. Replace `makeDemoPlan` with real planning/source-edit execution, then route its finished films through the existing MotionKit preview/export service. Validate a provider connection before displaying it as connected. The export service already exposes start, progress, cancel and verified output events; Saved videos contains actual checked outputs.
+Real raw-footage editing already uses Claude Code and FFmpeg. Further work is campaign/film authoring in the app, local speech transcription and captions, batch variant queues, and platform signing/notarization. The review findings and verification scope are recorded in [docs/REVIEW.md](docs/REVIEW.md).
 
 ## Design assets
 

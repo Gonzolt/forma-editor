@@ -17,16 +17,13 @@ const { JsonStore, validateState } = require("./store.cjs");
 const { extensions, registerFiles } = require("./media.cjs");
 const { MotionKit } = require("./motionkit.cjs");
 const { EditEngine } = require("./edit-engine.cjs");
+const { JobGate } = require("./job-gate.cjs");
 const {
   ClaudeConnection,
   signInUrl,
   SETUP_URL,
 } = require("./claude-connection.cjs");
-const {
-  UpdateService,
-  gitRevision,
-  KIT_BASE_REVISION,
-} = require("./updates.cjs");
+const { UpdateService, gitRevision } = require("./updates.cjs");
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -60,6 +57,7 @@ let motionKit;
 let editEngine;
 let updates;
 let claudeConnection;
+const jobs = new JobGate(() => !!editEngine?.active || !!motionKit?.active);
 let quitRequested = false;
 app.on("before-quit", () => {
   quitRequested = true;
@@ -92,6 +90,7 @@ async function importPaths(paths) {
 }
 function createWindow() {
   allowClose = false;
+  jobs.reopen();
   claudeConnection?.reopen();
   win = new BrowserWindow({
     width: 1440,
@@ -208,14 +207,11 @@ if (gotLock)
           if (!(await fs.stat(motionKit.root)).isDirectory())
             throw new Error("MotionKit project missing.");
           const revision = await gitRevision(motionKit.root);
-          const managed = await fs
-            .realpath(path.join(app.getPath("userData"), "motionkit"))
-            .catch(() => null);
-          const isManaged = motionKit.root === managed;
+          const isManaged = !!motionKit.workspace?.managed;
           return {
             root: motionKit.root,
-            revision: revision || (isManaged ? KIT_BASE_REVISION : null),
-            mode: revision ? "git" : isManaged ? "bundled" : "external",
+            revision: isManaged ? motionKit.workspace.revision : revision,
+            mode: isManaged ? "bundled" : revision ? "git" : "external",
           };
         },
         onChange: (state) => {
@@ -232,6 +228,8 @@ if (gotLock)
           : {};
       claudeConnection = new ClaudeConnection({
         store,
+        fetch: (url, options) => net.fetch(url, options),
+        workRoot: path.join(app.getPath("temp"), "forma-claude-install"),
         ...claudeTest,
         onChange: (state) => {
           if (win && !win.isDestroyed())
@@ -258,7 +256,7 @@ if (gotLock)
       });
       handle("edit:start", async (options) => {
         try {
-          return await editEngine.start(options);
+          return await jobs.start(() => editEngine.start(options));
         } catch (error) {
           // IPC drops custom error fields, so the code travels in the message.
           throw new Error(
@@ -268,9 +266,29 @@ if (gotLock)
       });
       handle("edit:cancel", () => editEngine.cancel());
       handle("claude:status", () => claudeConnection.check());
-      handle("claude:login", () => claudeConnection.login());
+      const changeAccount = (operation) => {
+        if (editEngine.active || jobs.pending)
+          throw new Error(
+            "Finish or stop the current edit before changing your Claude connection.",
+          );
+        return operation();
+      };
+      handle("claude:login", () =>
+        changeAccount(() => claudeConnection.login()),
+      );
+      handle("claude:connect", () =>
+        changeAccount(() => claudeConnection.connect()),
+      );
+      handle("claude:repair", () =>
+        changeAccount(() => claudeConnection.connect(true)),
+      );
+      handle("claude:discover", () =>
+        changeAccount(() => claudeConnection.discover()),
+      );
       handle("claude:cancel", () => claudeConnection.cancelLogin());
-      handle("claude:logout", () => claudeConnection.logout());
+      handle("claude:logout", () =>
+        changeAccount(() => claudeConnection.logout()),
+      );
       handle("claude:choose", async () => {
         const result = await dialog.showOpenDialog(win, {
           title: "Choose the native Claude Code executable",
@@ -281,7 +299,7 @@ if (gotLock)
         });
         return result.canceled
           ? null
-          : claudeConnection.choose(result.filePaths[0]);
+          : changeAccount(() => claudeConnection.choose(result.filePaths[0]));
       });
       handle("claude:open", (target) => {
         if (target === "setup") return shell.openExternal(SETUP_URL);
@@ -303,11 +321,43 @@ if (gotLock)
       });
       protocol.handle("forma-kit", (request) => motionKit.serve(request));
       handle("motionkit:status", () => motionKit.status());
-      handle("motionkit:preview", (id) => motionKit.preview(id));
-      handle("motionkit:export", (options) => motionKit.start(options));
+      handle("motionkit:preview", (id, variant) =>
+        motionKit.preview(id, variant),
+      );
+      handle("motionkit:export", (options) =>
+        jobs.start(() => motionKit.start(options)),
+      );
+      handle("motionkit:carousel", (id, index) =>
+        motionKit.carousel(id, index),
+      );
+      handle("motionkit:carousel-export", (id) =>
+        jobs.start(() => motionKit.startCarousel(id)),
+      );
+      handle("motionkit:posts", (id) => motionKit.posts(id));
+      handle("motionkit:copy-post", async (id, index) => {
+        const posts = await motionKit.posts(id);
+        if (!Number.isInteger(index) || !posts[index])
+          throw new Error("Choose a post from this campaign.");
+        require("electron").clipboard.writeText(posts[index].text);
+      });
+      handle("motionkit:reveal-carousel", async (id) => {
+        const record = (await store.read("carousel-exports", [])).find(
+          (record) => record.id === id,
+        );
+        if (
+          !record ||
+          !(await fs.stat(record.directory).catch(() => null))?.isDirectory()
+        )
+          throw new Error(
+            "Those slides have moved or are no longer available.",
+          );
+        const error = await shell.openPath(record.directory);
+        if (error) throw new Error(error);
+      });
       handle("motionkit:cancel", () => motionKit.cancel());
       handle("motionkit:exports", () => motionKit.exports());
       handle("motionkit:choose", async () => {
+        jobs.assertIdle();
         if (motionKit.active)
           throw new Error("Stop the export before changing projects.");
         const result = await dialog.showOpenDialog(win, {
@@ -315,10 +365,19 @@ if (gotLock)
           properties: ["openDirectory"],
         });
         if (result.canceled) return null;
-        const selected = await motionKit.choose(result.filePaths[0]);
-        await updates.refreshContext();
-        return selected;
+        return jobs.start(async () => {
+          const selected = await motionKit.choose(result.filePaths[0]);
+          await updates.refreshContext();
+          return selected;
+        });
       });
+      handle("motionkit:use-bundled", () =>
+        jobs.start(async () => {
+          const selected = await motionKit.useBundled();
+          await updates.refreshContext();
+          return selected;
+        }),
+      );
       handle("motionkit:reveal", async (id) => {
         const record = (await motionKit.exports()).find(
           (record) => record.id === id,
@@ -363,6 +422,7 @@ if (gotLock)
         else if (action === "close") win.close();
       });
       handle("close:ready", async () => {
+        await jobs.close();
         await editEngine.close();
         await claudeConnection.close();
         await updates.close();

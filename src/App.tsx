@@ -112,7 +112,11 @@ export default function App() {
   const updates = useUpdates(ready, notify);
   useEffect(() => {
     if (kit.job?.status === "completed")
-      notify("MotionKit export ready. Your video is in Saved videos.");
+      notify(
+        kit.job.carouselResult
+          ? `${kit.job.carouselResult.count} carousel slides are ready.`
+          : "MotionKit export ready. Your video is in Saved videos.",
+      );
     else if (kit.job?.status === "failed" || kit.job?.status === "cancelled")
       notify(kit.job.message);
   }, [kit.job?.id, kit.job?.status, notify]);
@@ -299,6 +303,12 @@ export default function App() {
       stop();
       return;
     }
+    if (kit.busy) {
+      notify(
+        "A MotionKit export is running. Finish or stop it before starting an edit.",
+      );
+      return;
+    }
     if (!session.files.length) {
       notify("Add some footage first. Click the spark or attach a file.");
       return;
@@ -368,10 +378,14 @@ export default function App() {
     if (!ready || !desktop) return;
     void desktop.claude
       .status()
-      .then((s) => setClaudeReady(s.state === "signed-in"))
+      .then((s) =>
+        setClaudeReady(
+          s.state === "signed-in" && !s.signingIn && !s.installing,
+        ),
+      )
       .catch(() => {});
     return desktop.claude.onStatus((s) =>
-      setClaudeReady(s.state === "signed-in"),
+      setClaudeReady(s.state === "signed-in" && !s.signingIn && !s.installing),
     );
   }, [ready]);
   useEffect(
@@ -579,7 +593,7 @@ export default function App() {
           <MotionKitStudio
             status={kit.status}
             job={kit.job}
-            busy={kit.busy}
+            busy={kit.busy || (working && runMode === "edit")}
             error={kit.error}
             onRefresh={kit.refresh}
             onNotice={notify}

@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { bytes, desktop, duration } from "../lib/bridge";
+import { SocialStudio } from "./SocialStudio";
 import type {
   KitExportOptions,
   KitGuide,
@@ -40,7 +41,7 @@ export function MotionKitStudio({
   onNotice,
   onLibrary,
 }: Props) {
-  const [tab, setTab] = useState<"films" | "skills">("films");
+  const [tab, setTab] = useState<"films" | "skills" | "social">("films");
   const [selected, setSelected] = useState("");
   const [preview, setPreview] = useState<KitPreview | null>(null);
   const [previewError, setPreviewError] = useState("");
@@ -162,6 +163,29 @@ export function MotionKitStudio({
           </p>
         </div>
         <div className="kit-project-actions">
+          {status && !status.managed && (
+            <button
+              className="button primary"
+              disabled={busy}
+              onClick={() => {
+                void desktop?.motionKit
+                  .useBundled()
+                  .then(async () => {
+                    await onRefresh();
+                    setRefreshKey((n) => n + 1);
+                  })
+                  .catch((error) =>
+                    onNotice(
+                      error instanceof Error
+                        ? error.message
+                        : "Could not open the included project.",
+                    ),
+                  );
+              }}
+            >
+              Use included MotionKit
+            </button>
+          )}
           <button
             className="button"
             disabled={!desktop || busy}
@@ -203,6 +227,13 @@ export function MotionKitStudio({
       </div>
       <div className="kit-tabs" role="group" aria-label="MotionKit sections">
         <button
+          className={tab === "social" ? "active" : ""}
+          onClick={() => setTab("social")}
+        >
+          <Clapperboard size={15} /> Social studio{" "}
+          <span className="mono">{status?.campaigns.length || 0}</span>
+        </button>
+        <button
           className={tab === "films" ? "active" : ""}
           onClick={() => setTab("films")}
         >
@@ -225,6 +256,23 @@ export function MotionKitStudio({
             Retry
           </button>
         </div>
+      )}
+      {!!status?.conflicts.length && (
+        <p className="settings-note">
+          MotionKit was upgraded in a new project copy.{" "}
+          {status.conflicts.length} locally changed file(s) were kept. Your
+          previous project is preserved
+          {status.previousRoot ? ` at ${status.previousRoot}` : ""}.
+        </p>
+      )}
+      {status && tab === "social" && (
+        <SocialStudio
+          status={status}
+          job={job}
+          busy={busy}
+          onNotice={onNotice}
+          onLibrary={onLibrary}
+        />
       )}
       {!status && !error && (
         <p className="kit-loading" role="status">

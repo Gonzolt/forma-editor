@@ -43,6 +43,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm --prefix vendor/motionkit test
       - run: npm run build
       - run: npm run test:desktop
         timeout-minutes: 3
@@ -52,9 +53,15 @@ jobs:
         timeout-minutes: 3
       - run: npm run test:claude
         timeout-minutes: 3
+      - run: npm run test:social
+        timeout-minutes: 5
+      - run: npm run test:edit
+        timeout-minutes: 5
       - run: ${{ matrix.command }}
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - run: node tools/smoke-packaged.mjs ${{ matrix.arch }}
+        timeout-minutes: 5
       - uses: actions/upload-artifact@v4
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_artifacts }}
         with:

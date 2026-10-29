@@ -14,7 +14,7 @@ const root = path.resolve(__dirname, "../vendor/motionkit");
 test("the pinned MotionKit project supplies its films and real editing skills", async () => {
   assert.equal(await validateProject(root), await fs.realpath(root));
   const films = await listFilms(root);
-  assert.equal(films.length, 3);
+  assert.equal(films.length, 4);
   assert.equal(films[0].id, "lab/motionlab");
   assert.ok(
     (await listGuides(root))

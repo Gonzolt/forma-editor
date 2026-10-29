@@ -87,7 +87,7 @@ export function SettingsModal({
       setKey("");
       setConnection(await desktop.connection());
       onNotice(
-        "API key encrypted and saved locally. Claude execution is not connected in this edition.",
+        "API key encrypted and saved locally. Run edit uses your Claude Code account.",
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not save the key.");
@@ -178,67 +178,70 @@ export function SettingsModal({
           {tab === "Claude" && (
             <>
               <ClaudeAccount />
-              <div className="connection-status">
-                <span className="status-dot accent" />
-                <div>
-                  <strong>
-                    {connection.hasKey ? "API key saved" : "No API key saved"}
-                  </strong>
-                  <p>
-                    {connection.hasKey
-                      ? "Stored securely. Edits run through Claude Code sign-in, not this key."
-                      : "Edits run through your Claude Code sign-in. API-key storage is optional."}
-                  </p>
+              <details className="api-storage">
+                <summary>Advanced API key storage</summary>
+                <div className="connection-status">
+                  <span className="status-dot accent" />
+                  <div>
+                    <strong>
+                      {connection.hasKey ? "API key saved" : "No API key saved"}
+                    </strong>
+                    <p>
+                      {connection.hasKey
+                        ? "Stored securely. Edits run through Claude Code sign-in, not this key."
+                        : "Edits run through your Claude Code sign-in. API-key storage is optional."}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="settings-divider eyebrow">
-                OR PREPARE AN API KEY
-              </div>
-              <label className="field-label" htmlFor="api-key">
-                Anthropic API key
-              </label>
-              <div className="key-input">
-                <KeyRound size={15} />
-                <input
-                  id="api-key"
-                  type="password"
-                  autoComplete="off"
-                  spellCheck={false}
-                  value={key}
-                  onChange={(e) => setKey(e.target.value)}
-                  placeholder="sk-ant-…"
-                  disabled={!connection.encryptionAvailable}
-                />
-                <button
-                  className="button"
-                  onClick={() => void saveKey()}
-                  disabled={!key || saving || !connection.encryptionAvailable}
-                >
-                  {saving ? "Saving…" : "Save"}
-                </button>
-              </div>
-              <p className="field-help">
-                {desktop
-                  ? connection.encryptionAvailable
-                    ? "Encrypted by your operating system. Never sent from this build."
-                    : "OS encryption is unavailable. Key storage is disabled."
-                  : "Secure key storage is available in the desktop app."}
-              </p>
-              {connection.hasKey && (
-                <button
-                  className="text-button"
-                  onClick={async () => {
-                    try {
-                      await desktop?.removeKey();
-                      setConnection(await desktop!.connection());
-                    } catch {
-                      setError("Could not remove the key.");
-                    }
-                  }}
-                >
-                  Remove saved key
-                </button>
-              )}
+                <div className="settings-divider eyebrow">
+                  OPTIONAL · NOT USED BY RUN EDIT
+                </div>
+                <label className="field-label" htmlFor="api-key">
+                  Anthropic API key
+                </label>
+                <div className="key-input">
+                  <KeyRound size={15} />
+                  <input
+                    id="api-key"
+                    type="password"
+                    autoComplete="off"
+                    spellCheck={false}
+                    value={key}
+                    onChange={(e) => setKey(e.target.value)}
+                    placeholder="sk-ant-…"
+                    disabled={!connection.encryptionAvailable}
+                  />
+                  <button
+                    className="button"
+                    onClick={() => void saveKey()}
+                    disabled={!key || saving || !connection.encryptionAvailable}
+                  >
+                    {saving ? "Saving…" : "Save"}
+                  </button>
+                </div>
+                <p className="field-help">
+                  {desktop
+                    ? connection.encryptionAvailable
+                      ? "Encrypted by your operating system. Never sent from this build."
+                      : "OS encryption is unavailable. Key storage is disabled."
+                    : "Secure key storage is available in the desktop app."}
+                </p>
+                {connection.hasKey && (
+                  <button
+                    className="text-button"
+                    onClick={async () => {
+                      try {
+                        await desktop?.removeKey();
+                        setConnection(await desktop!.connection());
+                      } catch {
+                        setError("Could not remove the key.");
+                      }
+                    }}
+                  >
+                    Remove saved key
+                  </button>
+                )}
+              </details>
               <label className="field-label" htmlFor="default-model">
                 Model for edits{" "}
                 <span className="field-hint">VIA CLAUDE CODE</span>
@@ -285,8 +288,8 @@ export function SettingsModal({
           {tab === "Skills" && (
             <>
               <p className="settings-description">
-                Choose which tools appear in your composer. These prompt skills
-                are currently used by the demo workflow.
+                Choose which tools appear in your composer. They guide your
+                edit; captions still require a separate transcription workflow.
               </p>
               <div className="skill-settings">
                 {skills.map((s) => (

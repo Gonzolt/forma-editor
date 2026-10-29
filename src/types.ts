@@ -92,9 +92,15 @@ export interface ClaudeStatus {
   signingIn: boolean;
   loginUrl: string | null;
   error: string | null;
+  installing: boolean;
+  installProgress: number;
+  installMessage: string;
 }
 export interface DesktopBridge {
   claude: {
+    connect: () => Promise<ClaudeStatus>;
+    repair: () => Promise<ClaudeStatus>;
+    discover: () => Promise<ClaudeStatus>;
     status: () => Promise<ClaudeStatus>;
     login: () => Promise<ClaudeStatus>;
     cancel: () => Promise<ClaudeStatus>;
@@ -111,11 +117,17 @@ export interface DesktopBridge {
   };
   motionKit: {
     status: () => Promise<MotionKitStatus>;
-    preview: (id: string) => Promise<KitPreview>;
+    preview: (id: string, variant?: string) => Promise<KitPreview>;
+    carousel: (id: string, index: number) => Promise<CarouselPreview>;
+    exportCarousel: (id: string) => Promise<KitJob>;
+    posts: (id: string) => Promise<SocialPost[]>;
+    copyPost: (id: string, index: number) => Promise<void>;
+    revealCarousel: (id: string) => Promise<void>;
     export: (options: KitExportOptions) => Promise<KitJob>;
     cancel: () => Promise<void>;
     exports: () => Promise<VideoExport[]>;
     chooseProject: () => Promise<MotionKitStatus | null>;
+    useBundled: () => Promise<MotionKitStatus>;
     openProject: () => Promise<void>;
     revealExport: (id: string) => Promise<void>;
     onJob: (callback: (job: KitJob) => void) => () => void;
@@ -188,6 +200,8 @@ export interface KitExportOptions {
   from: number;
   to: number;
   audioId?: string;
+  variant?: string;
+  crop?: "vertical" | "feed" | "square";
 }
 export interface VideoExport {
   id: string;
@@ -222,11 +236,40 @@ export interface KitJob {
   message: string;
   revision: number;
   result?: VideoExport;
+  carouselResult?: { id: string; name: string; count: number };
+}
+export interface SocialCampaign {
+  id: string;
+  name: string;
+  objective: string;
+  filmId: string | null;
+  hooks: { id: string; label: string }[];
+  messages: { id: string; label: string }[];
+  ctas: { id: string; label: string }[];
+  carousel: { count: number; width: number; height: number } | null;
+  postCount: number;
+}
+export interface CarouselPreview {
+  url: string;
+  width: number;
+  height: number;
+  count: number;
+}
+export interface SocialPost {
+  id: number;
+  platform: string;
+  text: string;
+  problems: { level: "error" | "warn"; msg: string }[];
 }
 export interface MotionKitStatus {
   root: string;
   source: string;
-  revision: string;
+  revision: string | null;
+  bundledRevision: string;
+  conflicts: string[];
+  previousRoot: string | null;
+  managed: boolean;
+  campaigns: SocialCampaign[];
   films: KitFilm[];
   guides: KitGuide[];
   encoderReady: boolean;

@@ -98,8 +98,9 @@ export function UpdatesPanel({ status, onCheck, onOpen }: UpdatesPanelProps) {
           <ArrowUpRight size={14} />
         </button>
         <p className="field-help">
-          Review the source update on GitHub, then select an updated project
-          folder in MotionKit. Checks leave your working films untouched.
+          Bundled MotionKit updates arrive with Forma. Your workspace is
+          upgraded in a new copy, preserving local edits and the original
+          project. External projects can be updated separately.
         </p>
       </div>
       <div className="update-check-row">

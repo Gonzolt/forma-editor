@@ -129,11 +129,15 @@ async function serveProject(root, request, net) {
       const html = await response.text();
       const fit =
         '<style id="forma-stage-fit">#frame{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}</style>';
+      const carouselFit =
+        segments.join("/") === "tools/carousel/index.html"
+          ? `<style>html,body{width:100%;height:100%;overflow:hidden}#slide{transform-origin:top left}</style><script>addEventListener('load',()=>{let tries=0;const ready=async()=>{if(!window.READY){if(tries++<300)setTimeout(ready,50);return}await window.READY;const slide=document.getElementById('slide');const fit=()=>{const scale=Math.min(innerWidth/slide.offsetWidth,innerHeight/slide.offsetHeight);if(!Number.isFinite(scale))return;slide.style.position='absolute';slide.style.transform='scale('+scale+')';slide.style.left=((innerWidth-slide.offsetWidth*scale)/2)+'px';slide.style.top=((innerHeight-slide.offsetHeight*scale)/2)+'px'};addEventListener('resize',fit);fit()};ready()})</script>`
+          : "";
       headers.delete("Content-Length");
       return new Response(
         /<\/head\s*>/i.test(html)
-          ? html.replace(/<\/head\s*>/i, fit + "$&")
-          : html + fit,
+          ? html.replace(/<\/head\s*>/i, fit + carouselFit + "$&")
+          : html + fit + carouselFit,
         { status: response.status, headers },
       );
     }

@@ -3,6 +3,7 @@ const { constants } = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
+const { installClaude } = require("./claude-install.cjs");
 
 const SETUP_URL = "https://code.claude.com/docs/en/setup";
 function signInUrl(text) {
@@ -90,13 +91,15 @@ async function findExecutable({
 }) {
   const saved = await store.read("claude-location", null);
   if (saved?.executable) {
-    return (await executableFile(saved.executable, platform))
-      ? saved.executable
-      : null;
+    if (await executableFile(saved.executable, platform))
+      return saved.executable;
   }
   const name = platform === "win32" ? "claude.exe" : "claude";
   const candidates = [
     path.join(home, ".local", "bin", name),
+    ...(platform === "win32" && env.LOCALAPPDATA
+      ? [path.join(env.LOCALAPPDATA, "Microsoft", "WinGet", "Links", name)]
+      : []),
     ...(platform === "win32"
       ? []
       : ["/opt/homebrew/bin/claude", "/usr/local/bin/claude"]),
@@ -132,8 +135,20 @@ class ClaudeConnection {
     env = process.env,
     home = os.homedir(),
     platform = process.platform,
+    fetch = globalThis.fetch,
+    install = installClaude,
+    workRoot = path.join(os.tmpdir(), "forma-claude-install"),
   }) {
-    Object.assign(this, { store, onChange, run, home, platform });
+    Object.assign(this, {
+      store,
+      onChange,
+      run,
+      home,
+      platform,
+      fetch,
+      install,
+      workRoot,
+    });
     // Use the CLI's own saved account, rather than credentials inherited by Forma.
     this.env = Object.fromEntries(
       Object.entries(env).filter(
@@ -153,11 +168,16 @@ class ClaudeConnection {
       signingIn: false,
       loginUrl: null,
       error: null,
+      installing: false,
+      installProgress: 0,
+      installMessage: "",
     };
     this.pending = null;
     this.loginTask = null;
     this.controller = null;
     this.closed = false;
+    this.installTask = null;
+    this.installController = null;
   }
   snapshot() {
     return structuredClone(this.state);
@@ -165,7 +185,8 @@ class ClaudeConnection {
   emit() {
     this.onChange(this.snapshot());
   }
-  check() {
+  check(force = false) {
+    if (this.installTask && !force) return Promise.resolve(this.snapshot());
     if (this.pending) return this.pending;
     this.pending = this.performCheck().finally(() => {
       this.pending = null;
@@ -211,15 +232,18 @@ class ClaudeConnection {
     this.emit();
     return this.snapshot();
   }
-  async login() {
+  async login(fromSetup = false, setupSignal) {
+    if (this.installTask && !fromSetup) return this.snapshot();
     if (this.loginTask) return this.snapshot();
     if (this.closed) throw new Error("Forma is closing.");
-    await this.check();
+    await this.check(fromSetup);
+    if (setupSignal?.aborted || (fromSetup && this.state.state === "signed-in"))
+      return this.snapshot();
     if (this.loginTask) return this.snapshot();
     if (this.closed) throw new Error("Forma is closing.");
     if (!this.state.executable)
       throw new Error(
-        "Install Claude Code or choose its native executable first.",
+        "Use Install & connect Claude to set up Claude Code first.",
       );
     const controller = (this.controller = new AbortController());
     Object.assign(this.state, { signingIn: true, loginUrl: null, error: null });
@@ -259,7 +283,7 @@ class ClaudeConnection {
         this.state.signingIn = false;
         this.state.loginUrl = null;
         this.controller = null;
-        await this.check();
+        await this.check(true);
         if (message) this.state.error = message;
         this.loginTask = null;
         this.emit();
@@ -267,13 +291,72 @@ class ClaudeConnection {
     })();
     return this.snapshot();
   }
+  async connect(repair = false) {
+    if (this.installTask || this.loginTask) return this.snapshot();
+    if (this.closed) throw new Error("Forma is closing.");
+    await this.check();
+    if (this.closed) throw new Error("Forma is closing.");
+    if (this.installTask || this.loginTask) return this.snapshot();
+    if (!repair && this.state.executable && this.state.state !== "error")
+      return this.login();
+    if (this.state.state === "error")
+      await this.store.write("claude-location", null);
+    const controller = (this.installController = new AbortController());
+    this.state.installing = true;
+    this.state.error = null;
+    this.emit();
+    const timer = setTimeout(() => controller.abort(), 600000);
+    this.installTask = (async () => {
+      try {
+        await this.install({
+          fetch: this.fetch,
+          run: this.run,
+          env: this.env,
+          platform: this.platform,
+          workRoot: this.workRoot,
+          signal: controller.signal,
+          onProgress: ({ message, progress }) => {
+            Object.assign(this.state, {
+              installMessage: message,
+              installProgress: progress,
+            });
+            this.emit();
+          },
+        });
+        if (!controller.signal.aborted && !this.closed)
+          await this.login(true, controller.signal);
+      } catch (error) {
+        if (!controller.signal.aborted)
+          this.state.error =
+            error instanceof Error
+              ? error.message
+              : "Claude Code could not be installed. Try again.";
+      } finally {
+        clearTimeout(timer);
+        this.state.installing = false;
+        this.installController = null;
+        this.installTask = null;
+        this.emit();
+      }
+    })();
+    return this.snapshot();
+  }
+  async discover() {
+    if (this.installTask || this.loginTask)
+      throw new Error("Finish or cancel the current connection first.");
+    await this.store.write("claude-location", null);
+    return this.check();
+  }
   async cancelLogin() {
+    this.installController?.abort();
+    await this.installTask;
     this.controller?.abort();
     await this.loginTask;
     return this.snapshot();
   }
   async logout() {
-    if (this.loginTask) throw new Error("Cancel the current sign-in first.");
+    if (this.loginTask || this.installTask)
+      throw new Error("Cancel the current connection first.");
     await this.check();
     if (!this.state.executable) return this.snapshot();
     const result = await this.run(this.state.executable, ["auth", "logout"], {

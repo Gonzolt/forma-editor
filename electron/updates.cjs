@@ -4,7 +4,7 @@ const semver = require("semver");
 
 const APP_REPOSITORY = "Gonzolt/forma-editor";
 const KIT_REPOSITORY = "Gonzolt/motionkit";
-const KIT_BASE_REVISION = "4c8d08e78f8132a4525b4df2c34ef2b41110d66b";
+const KIT_BASE_REVISION = require("./motionkit-revisions.json").current;
 const SHA = /^[a-f0-9]{40}$/i;
 
 async function smallText(filename) {

@@ -1,6 +1,6 @@
 {
   "name": "forma-editor",
-  "version": "0.6.1",
+  "version": "0.7.0",
   "private": true,
   "description": "A calmer space for your next cut. Cross-platform AI video editor foundations.",
   "author": "Gonzolt",
@@ -21,6 +21,8 @@
     "test:motionkit": "node tools/smoke-motionkit.mjs",
     "test:updates": "node tools/smoke-updates.mjs",
     "test:claude": "node tools/smoke-claude.mjs",
+    "test:social": "node tools/smoke-social.mjs",
+    "test:edit": "node tools/smoke-edit.mjs",
     "format": "prettier --write src electron tests tools/*.mjs *.json *.ts .github/workflows/*.yml README.md",
     "pack": "npm run build && electron-builder --dir --publish never",
     "dist:win": "npm run build && electron-builder --win nsis --x64 --publish never",
@@ -80,6 +82,7 @@
       }
     ],
     "beforePack": "./tools/before-pack.cjs",
+    "afterPack": "./tools/after-pack.cjs",
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico",

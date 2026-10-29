@@ -1,3 +1,4 @@
+import { version } from "../../package.json";
 import {
   ArrowUpRight,
   Clapperboard,
@@ -171,7 +172,7 @@ export function Sidebar({
           <kbd>⌘ / CTRL ,</kbd>
         </button>
         <div className="sidebar-edition eyebrow">
-          FORMA STUDIO <span>EARLY EDITION · 0.5</span>
+          FORMA STUDIO <span>EARLY EDITION · {version}</span>
         </div>
       </div>
     </aside>
