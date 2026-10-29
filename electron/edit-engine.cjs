@@ -683,15 +683,6 @@ class EditEngine {
     let partial;
     try {
       await fs.mkdir(work, { recursive: true });
-      const version = await this.exec(active, [claudeExe, "--version"], {
-        cwd: work,
-        timeout: 15000,
-      });
-      const installed = semver.coerce(version.stdout);
-      if (version.code !== 0 || !installed || semver.lt(installed, "2.1.257"))
-        throw new Error(
-          "Update Claude Code to 2.1.257 or later before editing. Forma needs its restricted file-reading support. Open Claude connection options to repair the installation.",
-        );
       const sources = [];
       let videos = 0,
         audios = 0;
@@ -701,6 +692,21 @@ class EditEngine {
           throw new Error(
             "A source file is missing. Reimport it and try again.",
           );
+        if (!sources.length) {
+          const version = await this.exec(active, [claudeExe, "--version"], {
+            cwd: work,
+            timeout: 15000,
+          });
+          const installed = semver.coerce(version.stdout);
+          if (
+            version.code !== 0 ||
+            !installed ||
+            semver.lt(installed, "2.1.257")
+          )
+            throw new Error(
+              "Update Claude Code to 2.1.257 or later before editing. Forma needs its restricted file-reading support. Open Claude connection options to repair the installation.",
+            );
+        }
         const kind = /\.(mp3|wav|m4a|aac|ogg|flac)$/i.test(filename)
           ? "audio"
           : /\.(png|jpe?g|webp|gif)$/i.test(filename)
