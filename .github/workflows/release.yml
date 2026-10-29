@@ -2,6 +2,12 @@ name: Publish desktop release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable release tag to rebuild
+        required: true
+        type: string
 permissions:
   contents: read
 jobs:
@@ -11,16 +17,20 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
       - name: Validate release version
-        run: node tools/release-assets.cjs --validate
+        run: node -e "process.env.GITHUB_REF_NAME=process.env.FORMA_RELEASE_TAG;process.argv.push('--validate');require('./tools/release-assets.cjs')"
+        env:
+          FORMA_RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
       - name: Prepare draft release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           gh release view "$TAG" --json tagName || gh release create "$TAG" --verify-tag --draft --title "Forma $TAG" --generate-notes
   build:
@@ -39,7 +49,7 @@ jobs:
             command: npm run dist:mac -- --arm64
             arch: arm64
             name: macOS Apple Silicon
-          - os: macos-latest
+          - os: macos-15-intel
             command: npm run dist:mac -- --x64
             arch: x64
             name: macOS Intel
@@ -48,6 +58,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
@@ -74,8 +86,9 @@ jobs:
       - run: node tools/smoke-packaged.mjs ${{ matrix.arch }}
         timeout-minutes: 5
       - name: Upload installers to the tagged release
-        run: node tools/release-assets.cjs
+        run: node -e "process.env.GITHUB_REF_NAME=process.env.FORMA_RELEASE_TAG;require('./tools/release-assets.cjs')"
         env:
+          FORMA_RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
   publish:
@@ -88,5 +101,5 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: gh release edit "$TAG" --draft=false --latest

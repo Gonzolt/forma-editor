@@ -30,7 +30,7 @@ jobs:
             arch: arm64
             command: npm run dist:mac -- --arm64
           - name: macOS Intel
-            os: macos-latest
+            os: macos-15-intel
             arch: x64
             command: npm run dist:mac -- --x64
     runs-on: ${{ matrix.os }}
